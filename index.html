@@ -8,6 +8,7 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700;800;900&family=Outfit:wght@700;800;900&display=swap"
         rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root {
             --p: #7c3aed;
@@ -3241,6 +3242,116 @@
     </div>
 
     <script>
+        // ===================== SUPABASE CONFIG =====================
+        const SUPABASE_URL = 'https://xvgwuatufvidxqptagvz.supabase.co/';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh2Z3d1YXR1ZnZpZHhxcHRhZ3Z6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczNTg1NTYsImV4cCI6MjA5MjkzNDU1Nn0.yZ-ZiYeWI8qFjbsCho46qeNkesWYUjqlvsk0mkG6wJ0';
+        
+        let supabaseClient;
+        try {
+            supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            console.log('Supabase client initialized');
+        } catch (e) {
+            console.error('Supabase initialization failed:', e);
+        }
+
+        // --- Supabase Sync Logic ---
+        async function syncFromSupabase() {
+            if (!supabaseClient) return;
+            try {
+                const { data: dbMemos, error: memoError } = await supabaseClient
+                    .from('memos')
+                    .select('*')
+                    .order('updated_at', { ascending: false });
+                
+                if (memoError) {
+                    console.error('Memo fetch error:', memoError);
+                    throw memoError;
+                }
+                
+                if (dbMemos) {
+                    // 서버 데이터가 있을 때만 덮어쓰기 (로컬 데이터 보호를 위해 빈 배열이면 건너뛸 수도 있음)
+                    memos = dbMemos.map(m => ({
+                        id: m.id,
+                        title: m.title,
+                        content: m.content,
+                        checklist: m.checklist,
+                        color: m.color,
+                        category: m.category
+                    }));
+                    dbMemos.forEach(m => {
+                        if (m.checklist_items) {
+                            checklistItems[m.id] = m.checklist_items;
+                        }
+                    });
+                    save();
+                    render();
+                    showToast('클라우드 데이터를 동기화했습니다.', 'ok');
+                }
+            } catch (e) {
+                showToast('초기 동기화 실패: ' + (e.message || '네트워크 오류'), 'err');
+            }
+        }
+
+        async function syncMemoToSupabase(memo) {
+            if (!supabaseClient) return;
+            try {
+                const { error } = await supabaseClient
+                    .from('memos')
+                    .upsert({
+                        id: memo.id,
+                        title: memo.title,
+                        content: memo.content,
+                        checklist: memo.checklist,
+                        color: memo.color,
+                        category: memo.category,
+                        checklist_items: checklistItems[memo.id] || [],
+                        updated_at: new Date().toISOString()
+                    });
+                if (error) {
+                    console.error('Supabase upsert error:', error);
+                    showToast('클라우드 저장 실패: ' + error.message, 'err');
+                    throw error;
+                }
+                console.log('Memo synced to Supabase:', memo.id);
+            } catch (e) {
+                console.error('Supabase save error:', e);
+            }
+        }
+
+        async function deleteMemoFromSupabase(id) {
+            if (!supabaseClient) return;
+            try {
+                const { error } = await supabaseClient
+                    .from('memos')
+                    .delete()
+                    .eq('id', id);
+                if (error) {
+                    console.error('Supabase delete error:', error);
+                    showToast('클라우드 삭제 실패: ' + error.message, 'err');
+                    throw error;
+                }
+            } catch (e) {
+                console.error('Supabase delete error:', e);
+            }
+        }
+
+        async function syncCatsToSupabase() {
+            if (!supabaseClient) return;
+            try {
+                const catData = Object.entries(memoCats).map(([name, color]) => ({ name, color }));
+                const { error } = await supabaseClient
+                    .from('memo_categories')
+                    .upsert(catData);
+                if (error) {
+                    console.error('Supabase cat sync error:', error);
+                    showToast('카테고리 동기화 실패: ' + error.message, 'err');
+                    throw error;
+                }
+            } catch (e) {
+                console.error('Supabase cat sync error:', e);
+            }
+        }
+
         // ===================== STATE =====================
         let tasks = JSON.parse(localStorage.getItem('pne_tasks') || '[]');
         let memos = JSON.parse(localStorage.getItem('pne_memos') || '[]');
@@ -3357,6 +3468,9 @@
             scheduleNotifications();
             updatePomoDisp();
             updateWeather();
+
+            // Supabase 초기 동기화
+            await syncFromSupabase();
 
             // Service Worker
             if ('serviceWorker' in navigator) {
@@ -3802,15 +3916,16 @@
             memoCategoryFilter = cat;
             render();
         }
-        function changeMemoCategory(id, newCat) {
+        async function changeMemoCategory(id, newCat) {
             const m = memos.find(x => x.id === id);
             if (m) {
                 m.category = newCat;
                 save(); render();
+                await syncMemoToSupabase(m);
                 showToast(`메모가 ${newCat || '미분류'} 카테고리로 이동되었습니다.`, 'ok');
             }
         }
-        function addMemoCat() {
+        async function addMemoCat() {
             const name = prompt('새 카테고리 이름을 입력하세요:');
             if (!name || !name.trim()) return;
             const n = name.trim();
@@ -3818,9 +3933,10 @@
             const colors = ['#6366f1', '#f59e0b', '#10b981', '#3b82f6', '#ec4899', '#8b5cf6', '#06b6d4', '#ef4444'];
             memoCats[n] = colors[Object.keys(memoCats).length % colors.length];
             save(); render();
+            await syncCatsToSupabase();
             showToast(`"${n}" 카테고리가 추가됐어요! 🎉`, 'ok');
         }
-        function editMemoCat(oldName) {
+        async function editMemoCat(oldName) {
             const newName = prompt('카테고리 이름을 수정하세요:', oldName);
             if (!newName || !newName.trim() || newName.trim() === oldName) return;
             const n = newName.trim();
@@ -3834,9 +3950,11 @@
             memos.forEach(m => { if (m.category === oldName) m.category = n; });
             if (memoCategoryFilter === oldName) memoCategoryFilter = n;
             save(); render();
+            await syncCatsToSupabase();
+            // 메모들도 개별적으로 업데이트 필요할 수 있음 (또는 전체 sync)
             showToast(`"${oldName}" → "${n}" 이름이 변경됐어요.`, 'ok');
         }
-        function deleteMemoCat(name) {
+        async function deleteMemoCat(name) {
             const count = memos.filter(m => m.category === name).length;
             const msg = count > 0
                 ? `"${name}" 카테고리를 삭제하면 ${count}개 메모의 카테고리가 초기화됩니다. 삭제할까요?`
@@ -3846,6 +3964,7 @@
             memos.forEach(m => { if (m.category === name) m.category = ''; });
             if (memoCategoryFilter === name) memoCategoryFilter = 'ALL';
             save(); render();
+            await syncCatsToSupabase();
             showToast(`"${name}" 카테고리가 삭제됐어요.`, 'ok');
         }
 
@@ -4038,6 +4157,18 @@
           </div>
           <button class="btn ${Notification.permission === 'granted' ? 'btn-ghost' : 'btn-primary'}" onclick="requestNotifPermission()" ${'Notification' in window ? '' : 'disabled'}>
             ${Notification.permission === 'granted' ? '설정됨' : '권한 허용'}
+          </button>
+        </div>
+      </div>
+      <div class="setting-card animate" style="animation-delay:.08s">
+        <div class="setting-row">
+          <div class="setting-info">
+            <h4>☁️ Supabase 클라우드 동기화</h4>
+            <p>메모와 카테고리를 Supabase 서버와 수동으로 동기화합니다</p>
+          </div>
+          <button class="btn btn-primary" onclick="syncFromSupabase()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            지금 동기화
           </button>
         </div>
       </div>
@@ -4471,7 +4602,7 @@
             renderMemoCatSelect(m.category || '');
             document.getElementById('memo-modal').classList.add('open');
         }
-        function saveMemo() {
+        async function saveMemo() {
             const title = document.getElementById('m-title').value || 'New Memo';
             const content = document.getElementById('m-content').value;
             const color = document.getElementById('m-color').value;
@@ -4479,15 +4610,25 @@
             const cb = document.getElementById('m-has-checklist');
             const checklist = cb.checked ? (document.getElementById('m-checklist').value || '') : '';
             const id = document.getElementById('m-id').value;
+            let memoObj;
             if (id) {
                 const idx = memos.findIndex(x => x.id === id);
-                if (idx >= 0) memos[idx] = { ...memos[idx], title, content, checklist, color, category };
+                if (idx >= 0) {
+                    memos[idx] = { ...memos[idx], title, content, checklist, color, category };
+                    memoObj = memos[idx];
+                }
             } else {
-                memos.unshift({ id: Date.now() + '', title, content, checklist, color, category });
+                memoObj = { id: Date.now() + '', title, content, checklist, color, category };
+                memos.unshift(memoObj);
             }
             save(); closeModals(); render();
+            if (memoObj) await syncMemoToSupabase(memoObj);
         }
-        function deleteMemo(id) { memos = memos.filter(m => m.id !== id); save(); render(); }
+        async function deleteMemo(id) {
+            memos = memos.filter(m => m.id !== id);
+            save(); render();
+            await deleteMemoFromSupabase(id);
+        }
         function renderColorPicker(selectedColor) {
             const row = document.getElementById('color-picker-row');
             if (!row) return;
@@ -4515,7 +4656,7 @@
                 el.style.display = 'none';
             }
         }
-        function toggleCheckItem(memoId, idx, val) {
+        async function toggleCheckItem(memoId, idx, val) {
             if (!checklistItems[memoId]) checklistItems[memoId] = [];
             checklistItems[memoId][idx] = val;
             save();
@@ -4529,6 +4670,10 @@
             }
             // 진행바 업데이트
             updateClProgress(memoId);
+            
+            // Supabase 동기화
+            const m = memos.find(x => x.id === memoId);
+            if (m) await syncMemoToSupabase(m);
         }
         function updateClProgress(memoId) {
             const m = memos.find(x => x.id === memoId);
