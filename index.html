@@ -3502,15 +3502,19 @@
         }
 
         async function syncTaskToSupabase(task) {
-            if (!supabaseClient || !currentUser) return;
+            if (!supabaseClient || !currentUser) {
+                console.log('동기화 건너뜀: 클라이언트 또는 사용자 세션 없음');
+                return;
+            }
             try {
+                console.log('일정 저장 시도 중...', task);
                 const { error } = await supabaseClient
                     .from('tasks')
                     .upsert({
                         id: task.id,
                         user_id: currentUser.id,
                         title: task.title,
-                        desc: task.desc || '',
+                        "desc": task.desc || '', // 예약어 처리
                         category: task.category,
                         priority: task.priority,
                         date: task.date,
@@ -3522,11 +3526,13 @@
                         updated_at: new Date().toISOString()
                     });
                 if (error) {
-                    console.error('Supabase task upsert error:', error);
-                    showToast('클라우드 일정 저장 실패', 'err');
+                    console.error('Supabase 일정 저장 실패 상세:', error);
+                    showToast('클라우드 일정 저장 실패: ' + error.message, 'err');
+                } else {
+                    console.log('일정 클라우드 저장 완료!');
                 }
             } catch (e) {
-                console.error('Supabase task sync error:', e);
+                console.error('Supabase 일정 동기화 예외 발생:', e);
             }
         }
 
