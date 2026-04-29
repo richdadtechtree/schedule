@@ -3458,7 +3458,8 @@
                         completed: !!t.completed, // Boolean 강제
                         repeat: t.repeat,
                         weekDays: t.weekdays || [],
-                        status: t.status
+                        status: t.status || '',
+                        updated_at: t.updated_at
                     }));
                 }
 
