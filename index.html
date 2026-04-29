@@ -4631,11 +4631,12 @@
             await syncTaskToSupabase(t);
         }
 
-        function moveKanban(id) {
+        async function moveKanban(id) {
             const t = tasks.find(x => x.id === id);
             if (!t) return;
             t.status = t.status === 'inprogress' ? '' : 'inprogress';
             save(); render();
+            await syncTaskToSupabase(t);
         }
         async function deleteTask(id) {
             if (!confirm('태스크를 삭제할까요?')) return;
@@ -5648,7 +5649,7 @@
             document.getElementById('qc-panel').classList.remove('open');
             document.getElementById('qc-backdrop').classList.remove('open');
         }
-        function saveQuickCapture() {
+        async function saveQuickCapture() {
             const title = document.getElementById('qc-input').value.trim();
             if (!title) { closeQuickCapture(); return; }
             const cat = document.getElementById('qc-cat').value;
@@ -5659,6 +5660,7 @@
             tasks.unshift(t);
             save(); render(); closeQuickCapture();
             showToast('✅ 태스크 추가됨: ' + t.title.slice(0, 20), 'ok');
+            await syncTaskToSupabase(t);
         }
 
         function parseTaskNLP(title, defCat = '기타', defPri = 'MEDIUM', defDate = today()) {
