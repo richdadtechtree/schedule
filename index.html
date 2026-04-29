@@ -3457,7 +3457,7 @@
                         time: t.time,
                         completed: !!t.completed, // Boolean 강제
                         repeat: t.repeat,
-                        weekDays: t.weekDays || [],
+                        weekDays: t.weekdays || [],
                         status: t.status
                     }));
                 }
@@ -3521,7 +3521,7 @@
                         time: task.time || '',
                         completed: !!task.completed,
                         repeat: task.repeat || 'none',
-                        weekDays: task.weekDays || [],
+                        weekdays: task.weekDays || [],
                         status: task.status || '',
                         updated_at: new Date().toISOString()
                     });
