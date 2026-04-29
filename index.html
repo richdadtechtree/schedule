@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="ko">
 
+s
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -1481,8 +1483,15 @@
         }
 
         @keyframes modal-pop {
-            from { opacity: 0; transform: scale(0.9) translateY(20px); }
-            to { opacity: 1; transform: scale(1) translateY(0); }
+            from {
+                opacity: 0;
+                transform: scale(0.9) translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
         }
 
         /* MEMO LAYOUT */
@@ -3234,7 +3243,11 @@
             <div class="mv-footer">
                 <button class="btn btn-secondary" onclick="closeModals()">닫기</button>
                 <button class="btn btn-primary" id="mv-edit-btn">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2-2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2-2h14a2 2 0 0 0 2-2v-7" />
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                    </svg>
                     편집하기
                 </button>
             </div>
@@ -3245,7 +3258,7 @@
         // ===================== SUPABASE CONFIG =====================
         const SUPABASE_URL = 'https://xvgwuatufvidxqptagvz.supabase.co/';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh2Z3d1YXR1ZnZpZHhxcHRhZ3Z6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczNTg1NTYsImV4cCI6MjA5MjkzNDU1Nn0.yZ-ZiYeWI8qFjbsCho46qeNkesWYUjqlvsk0mkG6wJ0';
-        
+
         let supabaseClient;
         try {
             supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -3262,12 +3275,15 @@
                     .from('memos')
                     .select('*')
                     .order('updated_at', { ascending: false });
-                
+
                 if (memoError) {
                     console.error('Memo fetch error:', memoError);
+                    if (memoError.code !== 'PGRST116') { // Ignore "no rows" errors
+                        alert('데이터 불러오기 에러: ' + memoError.message);
+                    }
                     throw memoError;
                 }
-                
+
                 if (dbMemos) {
                     // 서버 데이터가 있을 때만 덮어쓰기 (로컬 데이터 보호를 위해 빈 배열이면 건너뛸 수도 있음)
                     memos = dbMemos.map(m => ({
@@ -3309,6 +3325,7 @@
                     });
                 if (error) {
                     console.error('Supabase upsert error:', error);
+                    alert('저장 실패 에러: ' + error.message + '\n(테이블에 컬럼이 누락되었는지 확인해주세요)');
                     showToast('클라우드 저장 실패: ' + error.message, 'err');
                     throw error;
                 }
@@ -4542,10 +4559,10 @@
         function openMemoView(id) {
             const m = memos.find(x => x.id === id);
             if (!m) return;
-            
+
             document.getElementById('mv-title').innerText = m.title || 'Memo';
             document.getElementById('mv-content').innerText = m.content || '';
-            
+
             const catContainer = document.getElementById('mv-cat-container');
             if (m.category) {
                 const color = memoCats[m.category] || 'var(--txt2)';
@@ -4583,7 +4600,7 @@
 
             const card = document.getElementById('memo-view-card');
             card.style.background = m.color || 'var(--surface)';
-            
+
             document.getElementById('memo-view-modal').classList.add('open');
         }
         function openMemoEdit(id) {
@@ -4670,7 +4687,7 @@
             }
             // 진행바 업데이트
             updateClProgress(memoId);
-            
+
             // Supabase 동기화
             const m = memos.find(x => x.id === memoId);
             if (m) await syncMemoToSupabase(m);
