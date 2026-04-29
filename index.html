@@ -799,6 +799,75 @@
         .btn-primary {
             background: linear-gradient(135deg, var(--p), var(--p2));
             color: #fff;
+        }
+
+        /* AUTH UI */
+        .auth-container {
+            margin-left: 10px;
+            display: flex;
+            align-items: center;
+        }
+
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--surface2);
+            padding: 4px 8px;
+            border-radius: 20px;
+            border: 1px solid var(--border2);
+        }
+
+        .user-profile img {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 1.5px solid var(--p);
+        }
+
+        .user-profile span {
+            font-size: 11px;
+            font-weight: 700;
+            max-width: 120px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .btn-auth-login {
+            background: #fff;
+            color: #444;
+            border: 1px solid var(--border);
+            padding: 6px 12px;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 11px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all .2s;
+        }
+
+        .btn-auth-login:hover {
+            background: var(--bg);
+            border-color: var(--p);
+        }
+
+        .btn-auth-logout {
+            background: none;
+            border: none;
+            color: var(--txt3);
+            font-size: 10px;
+            font-weight: 800;
+            cursor: pointer;
+            padding: 2px 6px;
+        }
+
+        .btn-auth-logout:hover {
+            color: var(--danger);
+        }
+            color: #fff;
             box-shadow: 0 4px 12px var(--p-glow)
         }
 
@@ -3071,6 +3140,9 @@
                         <line x1="12" y1="5" x2="12" y2="19" />
                         <line x1="5" y1="12" x2="19" y2="12" />
                     </svg> Task</button>
+                <div id="auth-container" class="auth-container">
+                    <!-- Auth UI will be rendered here -->
+                </div>
             </div>
         </header>
 
@@ -3256,32 +3328,90 @@
 
     <script>
         // ===================== SUPABASE CONFIG =====================
-        const SUPABASE_URL = 'https://xvgwuatufvidxqptagvz.supabase.co/';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh2Z3d1YXR1ZnZpZHhxcHRhZ3Z6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczNTg1NTYsImV4cCI6MjA5MjkzNDU1Nn0.yZ-ZiYeWI8qFjbsCho46qeNkesWYUjqlvsk0mkG6wJ0';
+        const SUPABASE_URL = 'https://phdyeiznernpuywsfcme.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBoZHllaXpuZXJucHV5d3NmY21lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0NDE3NDcsImV4cCI6MjA5MzAxNzc0N30.3LGBxJkj_J6zWAM9XJ1rx6i-OKZX82FiMjLAjP3H_Ro';
 
         let supabaseClient;
+        let currentUser = null;
+
         try {
             supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
             console.log('Supabase client initialized');
+
+            // --- Auth State Listener ---
+            supabaseClient.auth.onAuthStateChange((event, session) => {
+                currentUser = session?.user || null;
+                updateAuthUI(currentUser);
+                console.log('Auth state changed:', event, currentUser?.email);
+                if (event === 'SIGNED_IN') {
+                    syncFromSupabase();
+                } else if (event === 'SIGNED_OUT') {
+                    tasks = []; memos = [];
+                    render();
+                }
+            });
         } catch (e) {
             console.error('Supabase initialization failed:', e);
         }
 
+        async function handleSignIn() {
+            const { error } = await supabaseClient.auth.signInWithOAuth({
+                provider: 'google',
+                options: { redirectTo: window.location.origin }
+            });
+            if (error) showToast('로그인 실패: ' + error.message, 'err');
+        }
+
+        async function handleSignOut() {
+            const { error } = await supabaseClient.auth.signOut();
+            if (error) showToast('로그아웃 실패: ' + error.message, 'err');
+        }
+
+        function updateAuthUI(user) {
+            const container = document.getElementById('auth-container');
+            if (!container) return;
+            if (user) {
+                container.innerHTML = `
+                    <div class="user-profile">
+                        <img src="${user.user_metadata.avatar_url || ''}" alt="avatar" onerror="this.src='https://ui-avatars.com/api/?name=${user.email}'">
+                        <span>${user.email}</span>
+                        <button onclick="handleSignOut()" class="btn-auth-logout">로그아웃</button>
+                    </div>
+                `;
+            } else {
+                container.innerHTML = `
+                    <button onclick="handleSignIn()" class="btn-auth-login">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+                        Google 로그인
+                    </button>
+                `;
+            }
+        }
+
         // --- Supabase Sync Logic ---
         async function syncFromSupabase() {
-            if (!supabaseClient) return;
+            if (!supabaseClient || !currentUser) return;
             try {
+                // Fetch Memos
                 const { data: dbMemos, error: memoError } = await supabaseClient
                     .from('memos')
                     .select('*')
+                    .eq('user_id', currentUser.id)
                     .order('updated_at', { ascending: false });
 
                 if (memoError) {
                     console.error('Memo fetch error:', memoError);
-                    if (memoError.code !== 'PGRST116') { // Ignore "no rows" errors
-                        alert('데이터 불러오기 에러: ' + memoError.message);
-                    }
-                    throw memoError;
+                }
+
+                // Fetch Tasks
+                const { data: dbTasks, error: taskError } = await supabaseClient
+                    .from('tasks')
+                    .select('*')
+                    .eq('user_id', currentUser.id)
+                    .order('updated_at', { ascending: false });
+
+                if (taskError) {
+                    console.error('Task fetch error:', taskError);
                 }
 
                 if (dbMemos) {
@@ -3299,6 +3429,30 @@
                             checklistItems[m.id] = m.checklist_items;
                         }
                     });
+                }
+
+                if (dbTasks) {
+                    // 서버 데이터로 기존 태스크 업데이트 (중복 방지를 위해 ID 기준 맵핑)
+                    const taskMap = new Map(tasks.map(t => [t.id, t]));
+                    dbTasks.forEach(t => {
+                        taskMap.set(t.id, {
+                            id: t.id,
+                            title: t.title,
+                            desc: t.desc,
+                            category: t.category,
+                            priority: t.priority,
+                            date: t.date,
+                            time: t.time,
+                            completed: t.completed,
+                            repeat: t.repeat,
+                            weekDays: t.weekDays,
+                            status: t.status
+                        });
+                    });
+                    tasks = Array.from(taskMap.values());
+                }
+
+                if (dbMemos || dbTasks) {
                     save();
                     render();
                     showToast('클라우드 데이터를 동기화했습니다.', 'ok');
@@ -3309,12 +3463,13 @@
         }
 
         async function syncMemoToSupabase(memo) {
-            if (!supabaseClient) return;
+            if (!supabaseClient || !currentUser) return;
             try {
                 const { error } = await supabaseClient
                     .from('memos')
                     .upsert({
                         id: memo.id,
+                        user_id: currentUser.id,
                         title: memo.title,
                         content: memo.content,
                         checklist: memo.checklist,
@@ -3325,18 +3480,60 @@
                     });
                 if (error) {
                     console.error('Supabase upsert error:', error);
-                    alert('저장 실패 에러: ' + error.message + '\n(테이블에 컬럼이 누락되었는지 확인해주세요)');
                     showToast('클라우드 저장 실패: ' + error.message, 'err');
-                    throw error;
                 }
-                console.log('Memo synced to Supabase:', memo.id);
             } catch (e) {
                 console.error('Supabase save error:', e);
             }
         }
 
+        async function syncTaskToSupabase(task) {
+            if (!supabaseClient || !currentUser) return;
+            try {
+                const { error } = await supabaseClient
+                    .from('tasks')
+                    .upsert({
+                        id: task.id,
+                        user_id: currentUser.id,
+                        title: task.title,
+                        desc: task.desc || '',
+                        category: task.category,
+                        priority: task.priority,
+                        date: task.date,
+                        time: task.time || '',
+                        completed: !!task.completed,
+                        repeat: task.repeat || 'none',
+                        weekDays: task.weekDays || [],
+                        status: task.status || '',
+                        updated_at: new Date().toISOString()
+                    });
+                if (error) {
+                    console.error('Supabase task upsert error:', error);
+                    showToast('클라우드 일정 저장 실패', 'err');
+                }
+            } catch (e) {
+                console.error('Supabase task sync error:', e);
+            }
+        }
+
+        async function deleteTaskFromSupabase(id) {
+            if (!supabaseClient || !currentUser) return;
+            try {
+                const { error } = await supabaseClient
+                    .from('tasks')
+                    .delete()
+                    .eq('id', id);
+                if (error) {
+                    console.error('Supabase task delete error:', error);
+                    showToast('클라우드 삭제 실패', 'err');
+                }
+            } catch (e) {
+                console.error('Supabase task delete error:', e);
+            }
+        }
+
         async function deleteMemoFromSupabase(id) {
-            if (!supabaseClient) return;
+            if (!supabaseClient || !currentUser) return;
             try {
                 const { error } = await supabaseClient
                     .from('memos')
@@ -3353,9 +3550,9 @@
         }
 
         async function syncCatsToSupabase() {
-            if (!supabaseClient) return;
+            if (!supabaseClient || !currentUser) return;
             try {
-                const catData = Object.entries(memoCats).map(([name, color]) => ({ name, color }));
+                const catData = Object.entries(memoCats).map(([name, color]) => ({ name, color, user_id: currentUser.id }));
                 const { error } = await supabaseClient
                     .from('memo_categories')
                     .upsert(catData);
@@ -4257,7 +4454,7 @@
         }
 
         // ===================== TASK ACTIONS =====================
-        function toggleTask(idOrTitle, title) {
+        async function toggleTask(idOrTitle, title) {
             let t = tasks.find(x => x.id === idOrTitle);
             if (!t) t = tasks.find(x => x.title === title && (x.date === idOrTitle || !idOrTitle));
             if (!t) return;
@@ -4269,10 +4466,12 @@
                 if (next) {
                     const newTask = { ...t, id: Date.now() + '', date: next, completed: false };
                     tasks.unshift(newTask);
+                    await syncTaskToSupabase(newTask);
                     showToast('반복 일정이 다음으로 예약됐어요: ' + next, 'ok');
                 }
             }
             save(); render();
+            await syncTaskToSupabase(t);
         }
 
         function getNextRecurringDate(currentDate, repeat, weekDays) {
@@ -4297,12 +4496,13 @@
             }
             return formatDate(d);
         }
-        function duplicateTask(id) {
+        async function duplicateTask(id) {
             const t = tasks.find(x => x.id === id);
             if (!t) return;
             const copy = { ...t, id: Date.now() + '', title: t.title + ' (copy)', completed: false, status: '' };
             tasks.unshift(copy);
             save(); render();
+            await syncTaskToSupabase(copy);
             showToast('태스크가 복사됐어요 📋', 'ok');
         }
         function duplicateMemo(id) {
@@ -4352,7 +4552,7 @@
         function onDragLeave(e) {
             e.currentTarget.classList.remove('drag-over');
         }
-        function onDropKanban(e, colLabel) {
+        async function onDropKanban(e, colLabel) {
             e.preventDefault();
             e.currentTarget.classList.remove('drag-over');
             const id = e.dataTransfer.getData('text/plain') || draggedTaskId;
@@ -4370,8 +4570,9 @@
                 showToast('✅ 완료로 이동되었습니다.', 'ok');
             }
             save(); render();
+            await syncTaskToSupabase(t);
         }
-        function onDropMatrix(e, quadIdx) {
+        async function onDropMatrix(e, quadIdx) {
             e.preventDefault();
             e.currentTarget.classList.remove('drag-over');
             const id = e.dataTransfer.getData('text/plain') || draggedTaskId;
@@ -4394,6 +4595,7 @@
                 showToast('⚪ 낮은 우선순위로 분류되었습니다.', 'ok');
             }
             save(); render();
+            await syncTaskToSupabase(t);
         }
 
         function moveKanban(id) {
@@ -4402,9 +4604,10 @@
             t.status = t.status === 'inprogress' ? '' : 'inprogress';
             save(); render();
         }
-        function deleteTask(id) {
+        async function deleteTask(id) {
             if (!confirm('태스크를 삭제할까요?')) return;
             tasks = tasks.filter(t => t.id !== id);
+            await deleteTaskFromSupabase(id);
             save(); render();
         }
         function copyTaskText(id) {
@@ -4484,12 +4687,13 @@
             document.querySelector('#task-modal .modal-title').textContent = '✅ New Task';
             document.getElementById('task-modal').classList.add('open');
         }
-        function saveTask() {
+        async function saveTask() {
             const title = document.getElementById('t-title').value.trim();
             if (!title) return;
             const weekDays = Array.from(document.querySelectorAll('.day-toggle.on')).map(d => d.dataset.d);
             const editIdEl = document.getElementById('t-edit-id');
             const editId = editIdEl ? editIdEl.value : '';
+            let targetTask;
             if (editId) {
                 // 편집 모드
                 const idx = tasks.findIndex(t => t.id === editId);
@@ -4504,12 +4708,13 @@
                         repeat: document.getElementById('t-repeat').value,
                         weekDays
                     };
+                    targetTask = tasks[idx];
                 }
                 editIdEl.value = '';
                 document.querySelector('#task-modal .modal-title').textContent = '✅ New Task';
             } else {
                 // 신규 추가
-                tasks.unshift({
+                targetTask = {
                     id: Date.now() + '',
                     title, desc: document.getElementById('t-desc').value,
                     category: document.getElementById('t-cat').value,
@@ -4518,9 +4723,11 @@
                     time: document.getElementById('t-time').value,
                     repeat: document.getElementById('t-repeat').value,
                     weekDays, completed: false
-                });
+                };
+                tasks.unshift(targetTask);
             }
             save(); closeModals(); render();
+            if (targetTask) await syncTaskToSupabase(targetTask);
         }
         function autoParse(v) {
             if (v.includes('내일')) {
