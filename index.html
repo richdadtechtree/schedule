@@ -3359,13 +3359,26 @@
         }
 
         async function handleSignIn() {
-            // URL 파라미터가 섞이지 않도록 정제된 경로 사용 (GitHub Pages 대응)
-            const redirectUrl = window.location.origin + window.location.pathname;
-            const { error } = await supabaseClient.auth.signInWithOAuth({
-                provider: 'google',
-                options: { redirectTo: redirectUrl }
-            });
-            if (error) showToast('로그인 실패: ' + error.message, 'err');
+            try {
+                // URL 파라미터가 섞이지 않도록 정제된 경로 사용
+                const redirectUrl = window.location.origin + window.location.pathname;
+                console.log('Attempting login with redirectUrl:', redirectUrl);
+                
+                const { error } = await supabaseClient.auth.signInWithOAuth({
+                    provider: 'google',
+                    options: { 
+                        redirectTo: redirectUrl,
+                        queryParams: {
+                            access_type: 'offline',
+                            prompt: 'consent',
+                        }
+                    }
+                });
+                if (error) throw error;
+            } catch (error) {
+                console.error('Login error:', error);
+                showToast('로그인 실패: ' + error.message, 'err');
+            }
         }
 
         async function handleSignOut() {
@@ -3673,6 +3686,17 @@
 
         // ===================== INIT =====================
         async function init() {
+            console.log('Initializing app...');
+            console.log('Current URL:', window.location.href);
+            
+            // 세션 상태 체크
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (session) {
+                currentUser = session.user;
+                updateAuthUI(currentUser);
+                await syncFromSupabase();
+            }
+            
             if (isDark) document.documentElement.setAttribute('data-dark', '');
             render7Day();
             render();
