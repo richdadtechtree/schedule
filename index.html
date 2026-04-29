@@ -3369,8 +3369,7 @@
                     options: { 
                         redirectTo: redirectUrl,
                         queryParams: {
-                            access_type: 'offline',
-                            prompt: 'consent',
+                            access_type: 'offline'
                         }
                     }
                 });
@@ -5650,15 +5649,25 @@
             document.getElementById('qc-backdrop').classList.remove('open');
         }
         async function saveQuickCapture() {
+            console.log('단축키(/) 저장 시작');
             const title = document.getElementById('qc-input').value.trim();
-            if (!title) { closeQuickCapture(); return; }
+            if (!title) { 
+                console.log('제목 없음, 창 닫기');
+                closeQuickCapture(); 
+                return; 
+            }
             const cat = document.getElementById('qc-cat').value;
             const pri = document.getElementById('qc-pri').value;
             const date = document.getElementById('qc-date').value || selectedDate;
 
             const t = parseTaskNLP(title, cat, pri, date);
+            console.log('NLP 파싱 결과:', t);
+            
             tasks.unshift(t);
-            save(); render(); closeQuickCapture();
+            save(); 
+            render(); 
+            closeQuickCapture();
+            
             showToast('✅ 태스크 추가됨: ' + t.title.slice(0, 20), 'ok');
             await syncTaskToSupabase(t);
         }
