@@ -3964,6 +3964,10 @@
         function renderMiniCal() {
             const grid = document.getElementById('cal-grid');
             if (!grid) return;
+            const titleEl = document.querySelector('.cal-nav-title');
+            if (titleEl) {
+                titleEl.childNodes[0].textContent = new Date(calYear, calMonth).toLocaleString('ko-KR', { year: 'numeric', month: 'long' }) + ' ';
+            }
             grid.innerHTML = '';
             const first = new Date(calYear, calMonth, 1).getDay();
             const days = new Date(calYear, calMonth + 1, 0).getDate();
