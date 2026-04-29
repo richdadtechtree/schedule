@@ -5640,7 +5640,7 @@
 
         // ── 빠른 캡처 ──
         function openQuickCapture() {
-            renderCategorySelects(); // qc-cat이 </script> 이후에 정의되므로 패널 열 때마다 재초기화
+            renderCategorySelects(); // qc-cat이 script 태그 이후에 정의되므로 패널 열 때마다 재초기화
             document.getElementById('qc-panel').classList.add('open');
             document.getElementById('qc-backdrop').classList.add('open');
             document.getElementById('qc-input').value = '';
