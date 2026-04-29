@@ -5610,12 +5610,13 @@
         }
 
 
-        function showToast(msg, duration = 2000) {
+        function showToast(msg, typeOrDuration = 2000) {
             const t = document.getElementById('toast');
             if (!t) return;
             t.textContent = msg;
             t.classList.add('show');
             clearTimeout(t._timer);
+            const duration = typeof typeOrDuration === 'number' ? typeOrDuration : 2500;
             t._timer = setTimeout(() => t.classList.remove('show'), duration);
         }
         // ===================== START =====================
@@ -5639,9 +5640,11 @@
 
         // ── 빠른 캡처 ──
         function openQuickCapture() {
+            renderCategorySelects(); // qc-cat이 </script> 이후에 정의되므로 패널 열 때마다 재초기화
             document.getElementById('qc-panel').classList.add('open');
             document.getElementById('qc-backdrop').classList.add('open');
             document.getElementById('qc-input').value = '';
+            document.getElementById('qc-date').value = '';
             document.getElementById('qc-input').focus();
         }
         function closeQuickCapture() {
@@ -5649,26 +5652,25 @@
             document.getElementById('qc-backdrop').classList.remove('open');
         }
         async function saveQuickCapture() {
-            console.log('단축키(/) 저장 시작');
             const title = document.getElementById('qc-input').value.trim();
-            if (!title) { 
-                console.log('제목 없음, 창 닫기');
-                closeQuickCapture(); 
-                return; 
+            if (!title) { closeQuickCapture(); return; }
+
+            if (!currentUser) {
+                showToast('⚠️ 로그인 후 저장하면 DB에 동기화됩니다.', 2500);
             }
-            const cat = document.getElementById('qc-cat').value;
+
+            const cat = document.getElementById('qc-cat').value || Object.keys(catColors)[0] || '기타';
             const pri = document.getElementById('qc-pri').value;
             const date = document.getElementById('qc-date').value || selectedDate;
 
             const t = parseTaskNLP(title, cat, pri, date);
-            console.log('NLP 파싱 결과:', t);
-            
+
             tasks.unshift(t);
-            save(); 
-            render(); 
+            save();
+            render();
             closeQuickCapture();
-            
-            showToast('✅ 태스크 추가됨: ' + t.title.slice(0, 20), 'ok');
+            showToast('✅ 태스크 추가됨: ' + t.title.slice(0, 20));
+
             await syncTaskToSupabase(t);
         }
 
