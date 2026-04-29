@@ -3542,7 +3542,8 @@
                 const { error } = await supabaseClient
                     .from('tasks')
                     .delete()
-                    .eq('id', id);
+                    .eq('id', id)
+                    .eq('user_id', currentUser.id);
                 if (error) {
                     console.error('Supabase task delete error:', error);
                     showToast('클라우드 삭제 실패', 'err');
