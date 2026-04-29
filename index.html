@@ -3357,7 +3357,7 @@
         async function handleSignIn() {
             const { error } = await supabaseClient.auth.signInWithOAuth({
                 provider: 'google',
-                options: { redirectTo: window.location.origin }
+                options: { redirectTo: window.location.href }
             });
             if (error) showToast('로그인 실패: ' + error.message, 'err');
         }
