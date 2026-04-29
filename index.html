@@ -3392,30 +3392,24 @@
         async function syncFromSupabase() {
             if (!supabaseClient || !currentUser) return;
             try {
-                // Fetch Memos
+                // 1. 서버에서 최신 데이터 가져오기
                 const { data: dbMemos, error: memoError } = await supabaseClient
                     .from('memos')
                     .select('*')
                     .eq('user_id', currentUser.id)
                     .order('updated_at', { ascending: false });
 
-                if (memoError) {
-                    console.error('Memo fetch error:', memoError);
-                }
-
-                // Fetch Tasks
                 const { data: dbTasks, error: taskError } = await supabaseClient
                     .from('tasks')
                     .select('*')
                     .eq('user_id', currentUser.id)
                     .order('updated_at', { ascending: false });
 
-                if (taskError) {
-                    console.error('Task fetch error:', taskError);
-                }
+                if (memoError) console.error('Memo fetch error:', memoError);
+                if (taskError) console.error('Task fetch error:', taskError);
 
-                if (dbMemos) {
-                    // 서버 데이터가 있을 때만 덮어쓰기 (로컬 데이터 보호를 위해 빈 배열이면 건너뛸 수도 있음)
+                // 2. 서버에 데이터가 있다면 로컬 데이터를 서버 데이터로 교체 (Single Source of Truth)
+                if (dbMemos && dbMemos.length > 0) {
                     memos = dbMemos.map(m => ({
                         id: m.id,
                         title: m.title,
@@ -3431,33 +3425,30 @@
                     });
                 }
 
-                if (dbTasks) {
-                    // 서버 데이터로 기존 태스크 업데이트 (중복 방지를 위해 ID 기준 맵핑)
-                    const taskMap = new Map(tasks.map(t => [t.id, t]));
-                    dbTasks.forEach(t => {
-                        taskMap.set(t.id, {
-                            id: t.id,
-                            title: t.title,
-                            desc: t.desc,
-                            category: t.category,
-                            priority: t.priority,
-                            date: t.date,
-                            time: t.time,
-                            completed: t.completed,
-                            repeat: t.repeat,
-                            weekDays: t.weekDays,
-                            status: t.status
-                        });
-                    });
-                    tasks = Array.from(taskMap.values());
+                if (dbTasks && dbTasks.length > 0) {
+                    tasks = dbTasks.map(t => ({
+                        id: t.id,
+                        title: t.title,
+                        desc: t.desc,
+                        category: t.category,
+                        priority: t.priority,
+                        date: t.date,
+                        time: t.time,
+                        completed: !!t.completed, // Boolean 강제
+                        repeat: t.repeat,
+                        weekDays: t.weekDays || [],
+                        status: t.status
+                    }));
                 }
 
-                if (dbMemos || dbTasks) {
+                // 3. 변경된 데이터를 로컬에 저장하고 화면 갱신
+                if ((dbMemos && dbMemos.length > 0) || (dbTasks && dbTasks.length > 0)) {
                     save();
                     render();
-                    showToast('클라우드 데이터를 동기화했습니다.', 'ok');
+                    showToast('클라우드 데이터와 동기화되었습니다.', 'ok');
                 }
             } catch (e) {
+                console.error('동기화 실패:', e);
                 showToast('초기 동기화 실패: ' + (e.message || '네트워크 오류'), 'err');
             }
         }
