@@ -4719,8 +4719,12 @@
             document.getElementById('task-modal').classList.add('open');
         }
         async function saveTask() {
+            console.log('saveTask 함수가 호출되었습니다.');
             const title = document.getElementById('t-title').value.trim();
-            if (!title) return;
+            if (!title) {
+                console.warn('제목이 없어 저장을 중단합니다.');
+                return;
+            }
             const weekDays = Array.from(document.querySelectorAll('.day-toggle.on')).map(d => d.dataset.d);
             const editIdEl = document.getElementById('t-edit-id');
             const editId = editIdEl ? editIdEl.value : '';
@@ -4757,8 +4761,14 @@
                 };
                 tasks.unshift(targetTask);
             }
-            save(); closeModals(); render();
-            if (targetTask) await syncTaskToSupabase(targetTask);
+            save(); 
+            closeModals(); 
+            render();
+            
+            if (targetTask) {
+                console.log('서버 동기화 시도:', targetTask);
+                await syncTaskToSupabase(targetTask);
+            }
         }
         function autoParse(v) {
             if (v.includes('내일')) {
