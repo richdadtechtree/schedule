@@ -4003,7 +4003,7 @@
         }
 
         async function syncLinksToSupabase() {
-            if (!supabaseClient || !currentUser) return;
+            if (!supabaseClient || !currentUser) return false;
             try {
                 const { error } = await supabaseClient
                     .from('user_settings')
@@ -4014,10 +4014,13 @@
                     }, { onConflict: 'user_id' });
                 if (error) {
                     console.error('Links 저장 실패:', error);
-                    showToast('링크 클라우드 저장 실패: ' + error.message, 'err');
+                    showToast('링크 저장 실패: ' + error.message, 'err');
+                    return false;
                 }
+                return true;
             } catch (e) {
                 console.error('Links sync error:', e);
+                return false;
             }
         }
 
@@ -5839,16 +5842,16 @@
             }, 50);
             showToast('행이 추가됐어요. 입력 후 저장 버튼을 눌러주세요.');
         }
-        function setQuickLinkIcon(index, icon) {
+        async function setQuickLinkIcon(index, icon) {
             links[index].icon = icon;
-            save();
+            await syncLinksToSupabase();
             renderQuickLinks();
             renderSettings();
         }
-        function removeQuickLink(index) {
+        async function removeQuickLink(index) {
             if (confirm('이 링크를 삭제할까요?')) {
                 links.splice(index, 1);
-                save();
+                await syncLinksToSupabase();
                 renderQuickLinks();
                 renderSettings();
             }
@@ -5987,9 +5990,13 @@
         }
 
         async function saveQuickLinks() {
-            await syncLinksToSupabase();
+            if (!currentUser) {
+                showToast('⚠️ 로그인 후 저장할 수 있습니다', 'err');
+                return;
+            }
+            const ok = await syncLinksToSupabase();
             renderQuickLinks();
-            showToast('✅ Quick Links 저장됨');
+            if (ok) showToast('✅ Quick Links 저장됨');
         }
 
         const _faviconTimers = {};
