@@ -6631,46 +6631,48 @@
         function startVoice() {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             if (!SpeechRecognition) { showToast('브라우저가 음성 인식을 지원하지 않습니다.', 'err'); return; }
-            if (!recognition) {
-                recognition = new SpeechRecognition();
-                recognition.lang = 'ko-KR';
-                recognition.continuous = true;
-                recognition.interimResults = true;
-                recognition.onstart = () => {
-                    isRecording = true;
-                    document.getElementById('voice-btn').classList.add('recording');
-                    document.getElementById('voice-txt').textContent = '듣고 있어요...';
-                    document.getElementById('voice-preview').classList.add('show');
-                    const mVoiceFab = document.getElementById('mobile-voice-fab');
-                    const mVoiceLabel = document.getElementById('voice-fab-label');
-                    if (mVoiceFab) mVoiceFab.classList.add('recording');
-                    if (mVoiceLabel) mVoiceLabel.classList.add('show');
-                    resetSilenceTimer();
-                };
-                recognition.onresult = (e) => {
-                    resetSilenceTimer();
-                    let interim = '', final = '';
-                    for (let i = e.resultIndex; i < e.results.length; ++i) {
-                        if (e.results[i].isFinal) final += e.results[i][0].transcript;
-                        else interim += e.results[i][0].transcript;
-                    }
-                    document.getElementById('voice-preview').textContent = final || interim;
-                };
-                recognition.onerror = (e) => { stopVoice(); if (e.error === 'not-allowed') showToast('마이크 권한이 필요합니다.', 'err'); };
-                recognition.onend = async () => {
-                    const txt = document.getElementById('voice-preview').textContent;
-                    if (isRecording && txt.trim()) {
-                        await saveVoiceResult(txt);
-                    }
-                    stopVoice();
-                };
-            }
+
+            recognition = new SpeechRecognition();
+            recognition.lang = 'ko-KR';
+            recognition.continuous = true;
+            recognition.interimResults = true;
+
             function resetSilenceTimer() {
                 clearTimeout(silenceTimer);
                 silenceTimer = setTimeout(() => {
                     if (isRecording && recognition) recognition.stop();
                 }, 4000);
             }
+
+            recognition.onstart = () => {
+                isRecording = true;
+                document.getElementById('voice-btn').classList.add('recording');
+                document.getElementById('voice-txt').textContent = '듣고 있어요...';
+                document.getElementById('voice-preview').classList.add('show');
+                const mVoiceFab = document.getElementById('mobile-voice-fab');
+                const mVoiceLabel = document.getElementById('voice-fab-label');
+                if (mVoiceFab) mVoiceFab.classList.add('recording');
+                if (mVoiceLabel) mVoiceLabel.classList.add('show');
+                resetSilenceTimer();
+            };
+            recognition.onresult = (e) => {
+                resetSilenceTimer();
+                let interim = '', final = '';
+                for (let i = e.resultIndex; i < e.results.length; ++i) {
+                    if (e.results[i].isFinal) final += e.results[i][0].transcript;
+                    else interim += e.results[i][0].transcript;
+                }
+                document.getElementById('voice-preview').textContent = final || interim;
+            };
+            recognition.onerror = (e) => { stopVoice(); if (e.error === 'not-allowed') showToast('마이크 권한이 필요합니다.', 'err'); };
+            recognition.onend = async () => {
+                const txt = document.getElementById('voice-preview').textContent;
+                if (isRecording && txt.trim()) {
+                    await saveVoiceResult(txt);
+                }
+                stopVoice();
+            };
+
             recognition.start();
         }
         function stopVoice() {
