@@ -6688,20 +6688,11 @@
         async function saveVoiceResult(text) {
             if (!text || !text.trim()) return;
             const cleanText = text.trim();
-            const isMemo = /메모|기록|노트/.test(cleanText);
-            if (isMemo) {
-                const memo = { id: Date.now() + '', title: cleanText, content: '', color: MEMO_COLORS[0] };
-                memos.unshift(memo);
-                save(); render();
-                await syncMemoToSupabase(memo);
-                showToast('📝 음성 메모 저장됨', 'ok');
-            } else {
-                const t = parseTaskNLP(cleanText);
-                tasks.unshift(t);
-                save(); render();
-                await syncTaskToSupabase(t);
-                showToast(`✅ 태스크 저장: ${t.title.slice(0, 20)}`, 'ok');
-            }
+            const memo = { id: Date.now() + '', title: cleanText, content: '', color: MEMO_COLORS[0] };
+            memos.unshift(memo);
+            save(); render();
+            await syncMemoToSupabase(memo);
+            showToast('📝 음성 메모 저장됨', 'ok');
             document.getElementById('voice-preview').textContent = '';
         }
 
