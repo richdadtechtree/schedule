@@ -3993,11 +3993,12 @@
                         priority: t.priority,
                         date: t.date,
                         time: t.time,
-                        completed: !!t.completed, // Boolean 강제
+                        completed: !!t.completed,
                         repeat: t.repeat,
                         weekDays: t.weekdays || [],
                         status: t.status || '',
-                        updated_at: t.updated_at
+                        updated_at: t.updated_at,
+                        ...(t.date_from ? { dateFrom: t.date_from, dateTo: t.date_to } : {})
                     }));
                 }
 
@@ -4062,6 +4063,8 @@
                         repeat: task.repeat || 'none',
                         weekdays: task.weekDays || [],
                         status: task.status || '',
+                        date_from: task.dateFrom || null,
+                        date_to: task.dateTo || null,
                         updated_at: new Date().toISOString()
                     });
                 if (error) {
@@ -5640,8 +5643,10 @@
                 memoObj = { id: Date.now() + '', title, content, checklist, color, category };
                 memos.unshift(memoObj);
             }
-            save(); closeModals(); render();
+            save();
             if (memoObj) await syncMemoToSupabase(memoObj);
+            closeModals();
+            render();
         }
         async function deleteMemo(id) {
             memos = memos.filter(m => m.id !== id);
