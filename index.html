@@ -6652,10 +6652,10 @@
                     document.getElementById('voice-preview').textContent = final || interim;
                 };
                 recognition.onerror = (e) => { stopVoice(); if (e.error === 'not-allowed') showToast('마이크 권한이 필요합니다.', 'err'); };
-                recognition.onend = () => {
+                recognition.onend = async () => {
                     const txt = document.getElementById('voice-preview').textContent;
                     if (isRecording && txt.trim()) {
-                        saveVoiceResult(txt);
+                        await saveVoiceResult(txt);
                     }
                     stopVoice();
                 };
@@ -6680,20 +6680,23 @@
             if (mVoiceFab) mVoiceFab.classList.remove('recording');
             if (mVoiceLabel) mVoiceLabel.classList.remove('show');
         }
-        function saveVoiceResult(text) {
+        async function saveVoiceResult(text) {
             if (!text || !text.trim()) return;
             const cleanText = text.trim();
             const isMemo = /메모|기록|노트/.test(cleanText);
             if (isMemo) {
-                const title = cleanText;
-                memos.unshift({ id: Date.now() + '', title: title, content: '', color: MEMO_COLORS[0] });
-                showToast('📝 음성 메모가 저장되었습니다.', 'ok');
+                const memo = { id: Date.now() + '', title: cleanText, content: '', color: MEMO_COLORS[0] };
+                memos.unshift(memo);
+                save(); render();
+                await syncMemoToSupabase(memo);
+                showToast('📝 음성 메모 저장됨', 'ok');
             } else {
                 const t = parseTaskNLP(cleanText);
                 tasks.unshift(t);
-                showToast(`✅ 태스크 저장: ${t.title.slice(0, 15)}...`, 'ok');
+                save(); render();
+                await syncTaskToSupabase(t);
+                showToast(`✅ 태스크 저장: ${t.title.slice(0, 20)}`, 'ok');
             }
-            save(); render();
             document.getElementById('voice-preview').textContent = '';
         }
 
