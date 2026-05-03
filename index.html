@@ -2361,6 +2361,50 @@
         }
 
         /* LOCK SCREEN */
+        #login-screen {
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+            z-index: 3000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+        }
+        #login-screen.hidden { display: none; }
+        .login-card {
+            background: rgba(255,255,255,.06);
+            border: 1px solid rgba(255,255,255,.12);
+            border-radius: 24px;
+            padding: 48px 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            min-width: 320px;
+            backdrop-filter: blur(20px);
+        }
+        .login-logo { font-size: 40px; font-weight: 800; letter-spacing: -1px; color: #a5b4fc; }
+        .login-sub { font-size: 14px; color: rgba(255,255,255,.5); margin-top: -8px; }
+        .login-btn-google {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 13px 28px;
+            border-radius: 12px;
+            border: none;
+            background: #fff;
+            color: #1f2937;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 8px;
+            transition: transform .15s, box-shadow .15s;
+        }
+        .login-btn-google:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(0,0,0,.3); }
+        .login-hint { font-size: 12px; color: rgba(255,255,255,.3); text-align: center; }
+
         #lock-screen {
             position: fixed;
             inset: 0;
@@ -3063,12 +3107,61 @@
         }
         .mobile-fab:active { transform: scale(.92); }
 
+        /* Mobile Voice FAB */
+        .mobile-voice-fab {
+            display: none;
+            position: fixed;
+            left: 20px;
+            bottom: 76px;
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #f43f5e, #e11d48);
+            color: #fff;
+            border: none;
+            box-shadow: 0 8px 24px rgba(244,63,94,.4);
+            cursor: pointer;
+            z-index: 150;
+            align-items: center;
+            justify-content: center;
+            transition: transform .2s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .mobile-voice-fab:active { transform: scale(.92); }
+        .mobile-voice-fab.recording {
+            animation: voice-fab-pulse 1.2s infinite;
+            background: linear-gradient(135deg, #e11d48, #9f1239);
+        }
+        @keyframes voice-fab-pulse {
+            0%   { box-shadow: 0 0 0 0 rgba(244,63,94,.6); }
+            70%  { box-shadow: 0 0 0 14px rgba(244,63,94,0); }
+            100% { box-shadow: 0 0 0 0 rgba(244,63,94,0); }
+        }
+        /* 녹음 중 텍스트 팝업 */
+        .voice-fab-label {
+            position: fixed;
+            left: 80px;
+            bottom: 88px;
+            background: rgba(244,63,94,.95);
+            color: #fff;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 5px 10px;
+            border-radius: 20px;
+            display: none;
+            z-index: 151;
+            white-space: nowrap;
+            pointer-events: none;
+        }
+        .voice-fab-label.show { display: block; }
+
         @media (max-width: 768px) {
             :root { --sidebar: 260px; }
 
             .mobile-only { display: flex !important; }
             .mobile-nav { display: flex; }
             .mobile-fab { display: flex; }
+            .mobile-voice-fab { display: flex; }
 
             /* Hide desktop-only elements */
             .desktop-only { display: none !important; }
@@ -3235,6 +3328,19 @@
 </head>
 
 <body>
+
+    <!-- LOGIN SCREEN -->
+    <div id="login-screen">
+        <div class="login-card">
+            <div class="login-logo">vibe.</div>
+            <div class="login-sub">나만의 생산성 대시보드</div>
+            <button class="login-btn-google" onclick="handleSignIn()">
+                <svg width="18" height="18" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+                Google로 시작하기
+            </button>
+            <div class="login-hint">로그인하면 모든 데이터가 클라우드에 안전하게 저장됩니다</div>
+        </div>
+    </div>
 
     <!-- LOCK SCREEN -->
     <div id="lock-screen">
@@ -3751,10 +3857,12 @@
                 if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
                     if (currentUser) syncFromSupabase();
                 } else if (event === 'SIGNED_OUT') {
-                    tasks = []; 
+                    tasks = [];
                     memos = [];
-                    save(); // 로컬 스토리지도 비워줌 (보안)
+                    links = [...DEFAULT_LINKS];
+                    save();
                     render();
+                    renderQuickLinks();
                     showToast('로그아웃되었습니다.', 'ok');
                 }
             });
@@ -3790,6 +3898,11 @@
         }
 
         function updateAuthUI(user) {
+            const loginScreen = document.getElementById('login-screen');
+            if (loginScreen) {
+                if (user) loginScreen.classList.add('hidden');
+                else loginScreen.classList.remove('hidden');
+            }
             const container = document.getElementById('auth-container');
             if (!container) return;
             if (user) {
@@ -3801,12 +3914,7 @@
                     </div>
                 `;
             } else {
-                container.innerHTML = `
-                    <button onclick="handleSignIn()" class="btn-auth-login">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-                        Google 로그인
-                    </button>
-                `;
+                container.innerHTML = '';
             }
         }
 
@@ -5968,10 +6076,10 @@
                 if (!file) return;
                 if (file.size > 500 * 1024) { showToast('⚠️ 500KB 이하 이미지를 사용하세요'); return; }
                 const reader = new FileReader();
-                reader.onload = ev => {
+                reader.onload = async ev => {
                     links[index].icon = ev.target.result;
-                    save(); renderQuickLinks(); renderSettings();
-                    showToast('✅ 이미지 업로드 완료');
+                    renderQuickLinks(); renderSettings();
+                    showToast('✅ 이미지 업로드됨 — 저장 버튼을 눌러주세요');
                 };
                 reader.readAsDataURL(file);
             };
@@ -6512,6 +6620,10 @@
                     document.getElementById('voice-btn').classList.add('recording');
                     document.getElementById('voice-txt').textContent = '듣고 있어요...';
                     document.getElementById('voice-preview').classList.add('show');
+                    const mVoiceFab = document.getElementById('mobile-voice-fab');
+                    const mVoiceLabel = document.getElementById('voice-fab-label');
+                    if (mVoiceFab) mVoiceFab.classList.add('recording');
+                    if (mVoiceLabel) mVoiceLabel.classList.add('show');
                     resetSilenceTimer();
                 };
                 recognition.onresult = (e) => {
@@ -6547,6 +6659,10 @@
             document.getElementById('voice-btn').classList.remove('recording');
             document.getElementById('voice-txt').textContent = 'Voice Note';
             document.getElementById('voice-preview').classList.remove('show');
+            const mVoiceFab = document.getElementById('mobile-voice-fab');
+            const mVoiceLabel = document.getElementById('voice-fab-label');
+            if (mVoiceFab) mVoiceFab.classList.remove('recording');
+            if (mVoiceLabel) mVoiceLabel.classList.remove('show');
         }
         function saveVoiceResult(text) {
             if (!text || !text.trim()) return;
@@ -6675,6 +6791,17 @@
     <!-- MOBILE FAB -->
     <button class="mobile-fab" onclick="openTaskModal()" aria-label="할 일 추가">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </button>
+
+    <!-- MOBILE VOICE FAB -->
+    <div class="voice-fab-label" id="voice-fab-label">🎙️ 듣고 있어요...</div>
+    <button class="mobile-voice-fab" id="mobile-voice-fab" onclick="toggleVoice()" aria-label="음성 메모">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+            <line x1="12" y1="19" x2="12" y2="23"/>
+            <line x1="8" y1="23" x2="16" y2="23"/>
+        </svg>
     </button>
 
     <!-- MOBILE SEARCH BAR -->
