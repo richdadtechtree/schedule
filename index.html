@@ -2371,28 +2371,36 @@
             align-items: center;
             justify-content: center;
             color: #fff;
+            overflow: hidden;
+            touch-action: none;
+            padding: 24px;
+            padding-bottom: calc(24px + env(safe-area-inset-bottom));
+            box-sizing: border-box;
         }
         #login-screen.hidden { display: none; }
         .login-card {
             background: rgba(255,255,255,.06);
             border: 1px solid rgba(255,255,255,.12);
-            border-radius: 24px;
+            border-radius: 28px;
             padding: 48px 40px;
             display: flex;
             flex-direction: column;
             align-items: center;
             gap: 20px;
-            min-width: 320px;
+            width: 100%;
+            max-width: 360px;
             backdrop-filter: blur(20px);
+            box-sizing: border-box;
         }
         .login-logo { font-size: 40px; font-weight: 800; letter-spacing: -1px; color: #a5b4fc; }
-        .login-sub { font-size: 14px; color: rgba(255,255,255,.5); margin-top: -8px; }
+        .login-sub { font-size: 14px; color: rgba(255,255,255,.5); margin-top: -8px; text-align: center; }
         .login-btn-google {
             display: flex;
             align-items: center;
+            justify-content: center;
             gap: 10px;
-            padding: 13px 28px;
-            border-radius: 12px;
+            padding: 15px 28px;
+            border-radius: 14px;
             border: none;
             background: #fff;
             color: #1f2937;
@@ -2400,10 +2408,13 @@
             font-weight: 600;
             cursor: pointer;
             margin-top: 8px;
+            width: 100%;
             transition: transform .15s, box-shadow .15s;
+            -webkit-tap-highlight-color: transparent;
+            min-height: 52px;
         }
-        .login-btn-google:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(0,0,0,.3); }
-        .login-hint { font-size: 12px; color: rgba(255,255,255,.3); text-align: center; }
+        .login-btn-google:active { transform: scale(.97); }
+        .login-hint { font-size: 12px; color: rgba(255,255,255,.3); text-align: center; line-height: 1.6; }
 
         #lock-screen {
             position: fixed;
@@ -3900,8 +3911,13 @@
         function updateAuthUI(user) {
             const loginScreen = document.getElementById('login-screen');
             if (loginScreen) {
-                if (user) loginScreen.classList.add('hidden');
-                else loginScreen.classList.remove('hidden');
+                if (user) {
+                    loginScreen.classList.add('hidden');
+                    document.body.style.overflow = '';
+                } else {
+                    loginScreen.classList.remove('hidden');
+                    document.body.style.overflow = 'hidden';
+                }
             }
             const container = document.getElementById('auth-container');
             if (!container) return;
