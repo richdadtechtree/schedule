@@ -4533,6 +4533,20 @@
                 renderSettings();
             });
         }
+        const NOTIF_ICON = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect width="24" height="24" rx="5" fill="%236366f1"/><text x="12" y="17" text-anchor="middle" font-size="14" fill="white">V</text></svg>';
+
+        function fireNotif(title, body, tag) {
+            if (Notification.permission !== 'granted') return;
+            const opts = { body, icon: NOTIF_ICON, tag: tag || ('vibe-' + Date.now()), renotify: true };
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.ready
+                    .then(reg => reg.showNotification(title, opts))
+                    .catch(() => new Notification(title, opts));
+            } else {
+                new Notification(title, opts);
+            }
+        }
+
         let scheduledTimeouts = [];
         function scheduleNotifications() {
             if (!('Notification' in window) || Notification.permission !== 'granted') return;
@@ -4540,20 +4554,39 @@
             scheduledTimeouts = [];
             const td = today();
             const now = new Date();
+
+            // ① 시간 있는 일정: 15분 전 + 정시 알림
             tasks.filter(t => !t.completed && t.date === td && t.time).forEach(t => {
                 const [h, m] = t.time.split(':').map(Number);
-                const taskTime = new Date(); taskTime.setHours(h, m, 0, 0);
-                const diff = taskTime - now - 15 * 60 * 1000;
-                if (diff > 0 && diff < 24 * 60 * 60 * 1000) {
-                    const timer = setTimeout(() => {
-                        new Notification('⏰ vibe. 마감 임박', {
-                            body: `15분 후: ${t.title}`,
-                            icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect width="24" height="24" rx="5" fill="%236366f1"/><text x="12" y="17" text-anchor="middle" font-size="14" fill="white">V</text></svg>'
-                        });
-                    }, diff);
-                    scheduledTimeouts.push(timer);
+                const taskTime = new Date();
+                taskTime.setHours(h, m, 0, 0);
+
+                const diff15 = taskTime - now - 15 * 60 * 1000;
+                if (diff15 > 0) {
+                    scheduledTimeouts.push(setTimeout(() =>
+                        fireNotif('⏰ 15분 후 일정', t.title, 'pre-' + t.id), diff15));
+                }
+
+                const diffExact = taskTime - now;
+                if (diffExact > 0) {
+                    scheduledTimeouts.push(setTimeout(() =>
+                        fireNotif('🔔 지금 시작', t.title, 'exact-' + t.id), diffExact));
                 }
             });
+
+            // ② 시간 없는 일정: 06:00 묶음 알림
+            const noTimeTasks = tasks.filter(t => !t.completed && isRecurringMatch(t, td) && !t.time);
+            if (noTimeTasks.length > 0) {
+                const wake = new Date();
+                wake.setHours(6, 0, 0, 0);
+                if (wake <= now) wake.setDate(wake.getDate() + 1);
+                scheduledTimeouts.push(setTimeout(() =>
+                    fireNotif(
+                        `📅 오늘 일정 ${noTimeTasks.length}개`,
+                        noTimeTasks.slice(0, 3).map(t => t.title).join(' · '),
+                        'daily-summary'
+                    ), wake - now));
+            }
         }
 
         function showDailyBriefing() {
@@ -5232,7 +5265,7 @@
         <div class="setting-row">
           <div class="setting-info">
             <h4>🔔 브라우저 알림</h4>
-            <p>태스크 15분 전 자동 알림 ${'Notification' in window ? (Notification.permission === 'granted' ? '<span style="color:var(--acc);font-weight:700">✓ 허용됨</span>' : Notification.permission === 'denied' ? '<span style="color:var(--danger)">✗ 차단됨</span>' : '<span style="color:var(--warn)">미설정</span>') : '<span style="color:var(--txt3)">미지원 브라우저</span>'}</p>
+            <p>시간 있는 일정: 15분 전 + 정시 알림 · 시간 없는 일정: 매일 06:00 묶음 알림 ${'Notification' in window ? (Notification.permission === 'granted' ? '<span style="color:var(--acc);font-weight:700">✓ 허용됨</span>' : Notification.permission === 'denied' ? '<span style="color:var(--danger)">✗ 차단됨</span>' : '<span style="color:var(--warn)">미설정</span>') : '<span style="color:var(--txt3)">미지원 브라우저</span>'}</p>
           </div>
           <button class="btn ${Notification.permission === 'granted' ? 'btn-ghost' : 'btn-primary'}" onclick="requestNotifPermission()" ${'Notification' in window ? '' : 'disabled'}>
             ${Notification.permission === 'granted' ? '설정됨' : '권한 허용'}
