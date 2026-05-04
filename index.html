@@ -3751,7 +3751,7 @@
     </div>
 
     <!-- MONTH POPUP CALENDAR -->
-    <div class="month-popup-overlay" id="month-popup-overlay" onclick="if(event.target===this) closeMonthPopup()">
+    <div class="month-popup-overlay" id="month-popup-overlay" onclick="if(event.target===this && mousedownTarget===this) closeMonthPopup()">
         <div class="month-popup-box" id="month-popup-box">
             <button class="mp-close" onclick="closeMonthPopup()" aria-label="닫기">✕</button>
             <div class="mp-header" style="justify-content:center;gap:16px">
@@ -6446,8 +6446,11 @@
             t._timer = setTimeout(() => t.classList.remove('show'), duration);
         }
         // ===================== START =====================
+        window.mousedownTarget = null;
+        window.addEventListener('mousedown', e => { window.mousedownTarget = e.target; });
+
         window.onclick = e => {
-            if (e.target.classList.contains('modal-overlay')) closeModals();
+            if (e.target.classList.contains('modal-overlay') && e.target === window.mousedownTarget) closeModals();
         };
 
         // ── 키보드 단축키 ──
@@ -6718,7 +6721,7 @@
 
     <div class="toast" id="toast"></div>
     <!-- QUICK CAPTURE -->
-    <div class="qc-backdrop" id="qc-backdrop" onclick="closeQuickCapture()"></div>
+    <div class="qc-backdrop" id="qc-backdrop" onclick="if(event.target === this && mousedownTarget === this) closeQuickCapture()"></div>
     <div class="quick-capture" id="qc-panel">
         <div class="qc-header">
             <div class="qc-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white"
