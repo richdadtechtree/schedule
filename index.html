@@ -4505,7 +4505,10 @@
 
             // Service Worker
             if ('serviceWorker' in navigator) {
-                try { await navigator.serviceWorker.register('sw.js'); } catch (e) { console.warn('SW failed', e); }
+                try {
+                    await navigator.serviceWorker.register('sw.js');
+                    if (Notification.permission === 'granted') subscribeToWebPush();
+                } catch (e) { console.warn('SW failed', e); }
             }
 
             // Daily Briefing
@@ -4524,12 +4527,50 @@
             }
         }
 
+        // ── Web Push 구독 ──
+        const VAPID_PUBLIC_KEY = 'BLcISgDGUoe6EO6z_M19BovzHxko6ZDWiGkYVEBr1Dk0wXiQcONsG5q1jiCC-1xr8lot5KjCvg7BcFPlOjrA1D8';
+
+        function urlBase64ToUint8Array(base64String) {
+            const padding = '='.repeat((4 - base64String.length % 4) % 4);
+            const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+            const raw = atob(base64);
+            return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+        }
+
+        async function subscribeToWebPush() {
+            if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+            if (!currentUser) return;
+            try {
+                const reg = await navigator.serviceWorker.ready;
+                let sub = await reg.pushManager.getSubscription();
+                if (!sub) {
+                    sub = await reg.pushManager.subscribe({
+                        userVisibleOnly: true,
+                        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+                    });
+                }
+                const { endpoint, keys } = sub.toJSON();
+                await supabaseClient.from('push_subscriptions').upsert({
+                    user_id: currentUser.id,
+                    endpoint,
+                    p256dh: keys.p256dh,
+                    auth: keys.auth
+                }, { onConflict: 'endpoint' });
+            } catch (e) {
+                console.warn('Push subscribe failed:', e);
+            }
+        }
+
         // ── 알림 시스템 ──
         function requestNotifPermission() {
             if (!('Notification' in window)) return;
             Notification.requestPermission().then(p => {
-                if (p === 'granted') showToast('알림 권한이 허용됐어요! 🔔', 'ok');
-                else showToast('알림 권한이 거부됐습니다', 'err');
+                if (p === 'granted') {
+                    showToast('알림 권한이 허용됐어요! 🔔', 'ok');
+                    subscribeToWebPush();
+                } else {
+                    showToast('알림 권한이 거부됐습니다', 'err');
+                }
                 renderSettings();
             });
         }
