@@ -3421,6 +3421,81 @@
             .memos-view-grid { grid-template-columns: 1fr; }
             .memos-grid { grid-template-columns: 1fr; }
         }
+
+        /* Related Memos Popup */
+        .related-popup {
+            position: fixed;
+            bottom: 80px; right: 16px;
+            width: 288px;
+            background: var(--surface);
+            backdrop-filter: var(--glass);
+            border-radius: 18px;
+            border: 1.5px solid var(--p);
+            box-shadow: 0 12px 40px var(--p-glow);
+            padding: 14px;
+            z-index: 600;
+            animation: relatedSlideUp .32s cubic-bezier(.34,1.4,.64,1);
+        }
+        @keyframes relatedSlideUp {
+            from { opacity:0; transform:translateY(24px) scale(.94); }
+            to   { opacity:1; transform:translateY(0) scale(1); }
+        }
+        .related-popup-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .related-popup-title {
+            font-size: 11px;
+            font-weight: 800;
+            color: var(--p);
+            text-transform: uppercase;
+            letter-spacing: .6px;
+        }
+        .related-popup-close {
+            background: none;
+            border: none;
+            color: var(--txt3);
+            cursor: pointer;
+            font-size: 14px;
+            padding: 2px 4px;
+            border-radius: 6px;
+            line-height: 1;
+        }
+        .related-popup-close:hover { background: var(--surface2); }
+        .related-popup-item {
+            padding: 9px 10px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background .15s;
+            border-bottom: .5px solid var(--border2);
+        }
+        .related-popup-item:last-child { border-bottom: none; }
+        .related-popup-item:hover { background: var(--surface2); }
+        .related-popup-item-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--txt);
+            margin-bottom: 2px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .related-popup-item-preview {
+            font-size: 10px;
+            color: var(--txt3);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .related-popup-score {
+            font-size: 9px;
+            color: var(--p);
+            font-weight: 700;
+            float: right;
+            margin-left: 6px;
+        }
     </style>
 </head>
 
@@ -4041,7 +4116,7 @@
 
                 const { data: dbSettings, error: settingsError } = await supabaseClient
                     .from('user_settings')
-                    .select('links, task_categories, memo_categories')
+                    .select('links, task_categories, memo_categories, pinned_memos')
                     .eq('user_id', currentUser.id)
                     .maybeSingle();
 
@@ -4066,6 +4141,10 @@
                         memoCats = dbSettings.memo_categories;
                         localStorage.setItem('pne_memo_cats', JSON.stringify(memoCats));
                         hasDbCategories = true;
+                    }
+                    if (Array.isArray(dbSettings.pinned_memos) && dbSettings.pinned_memos.length > 0) {
+                        pinnedMemoIds = new Set(dbSettings.pinned_memos);
+                        localStorage.setItem('pne_pinned_memos', JSON.stringify(dbSettings.pinned_memos));
                     }
                 }
                 // DB에 카테고리가 없으면 현재 로컬 설정을 DB에 업로드 (첫 로그인 seed)
@@ -4227,6 +4306,7 @@
                         links: links,
                         task_categories: catColors,
                         memo_categories: memoCats,
+                        pinned_memos: [...pinnedMemoIds],
                         updated_at: new Date().toISOString()
                     }, { onConflict: 'user_id' });
                 if (error) {
@@ -4242,6 +4322,7 @@
         }
 
         function syncLinksToSupabase() { return syncSettingsToSupabase(); }
+        function syncPinnedToSupabase() { return syncSettingsToSupabase(); }
 
         // ===================== STATE =====================
         let tasks = JSON.parse(localStorage.getItem('pne_tasks') || '[]');
@@ -4312,6 +4393,7 @@
         let catColors = JSON.parse(localStorage.getItem('pne_cats') || JSON.stringify(DEFAULT_CATS));
         const DEFAULT_MEMO_CATS = { '📁 일반': '#8b5cf6', '💡 아이디어': '#f59e0b', '📖 학습': '#10b981', '🔖 참고': '#3b82f6' };
         let memoCats = JSON.parse(localStorage.getItem('pne_memo_cats') || JSON.stringify(DEFAULT_MEMO_CATS));
+        let pinnedMemoIds = new Set(JSON.parse(localStorage.getItem('pne_pinned_memos') || '[]'));
         const MEMO_COLORS = ['#fffde7', '#e8f5e9', '#e3f2fd', '#fce4ec', '#f3e5f5', '#e0f7fa'];
         const MEMO_PALETTE = [
             { color: '#fffde7', label: 'Yellow' },
@@ -4340,9 +4422,28 @@
             localStorage.setItem('pne_checks', JSON.stringify(checklistItems));
             localStorage.setItem('pne_cats', JSON.stringify(catColors));
             localStorage.setItem('pne_memo_cats', JSON.stringify(memoCats));
+            localStorage.setItem('pne_pinned_memos', JSON.stringify([...pinnedMemoIds]));
             localStorage.setItem('pne_weather_loc', weatherLoc);
             scheduleNotifications();
         }
+        function togglePinMemo(id) {
+            if (pinnedMemoIds.has(id)) {
+                pinnedMemoIds.delete(id);
+                showToast('📌 고정 해제됐어요', 'ok');
+            } else {
+                if (pinnedMemoIds.size >= 3) {
+                    showToast('최대 3개까지 고정할 수 있어요', 'err');
+                    return;
+                }
+                pinnedMemoIds.add(id);
+                showToast('📌 대시보드에 고정됐어요!', 'ok');
+            }
+            // localStorage + Supabase 저장
+            localStorage.setItem('pne_pinned_memos', JSON.stringify([...pinnedMemoIds]));
+            syncPinnedToSupabase();
+            render();
+        }
+
         function dday(dateStr) {
             if (!dateStr) return null;
             const diff = Math.ceil((new Date(dateStr) - new Date(today())) / 86400000);
@@ -4597,9 +4698,11 @@
     </div>`;
             }).join('') : '<div class="empty"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><polyline points="9 16 11 18 15 14"/></svg>No tasks for today</div>';
 
-            const memoCardsHTML = fMemos.slice(0, 3).map((m, i) => `
-    <div class="memo-card animate animate-d${(i % 4) + 1}" style="background:${m.color || MEMO_COLORS[i % MEMO_COLORS.length]}" onclick="openMemoView('${m.id}')">
+            const _pinnedFirst = [...fMemos.filter(m => pinnedMemoIds.has(m.id)), ...fMemos.filter(m => !pinnedMemoIds.has(m.id))].slice(0, 3);
+            const memoCardsHTML = _pinnedFirst.map((m, i) => `
+    <div class="memo-card animate animate-d${(i % 4) + 1}" style="background:${m.color || MEMO_COLORS[i % MEMO_COLORS.length]};${pinnedMemoIds.has(m.id) ? 'outline:2px solid var(--p);outline-offset:-2px' : ''}" onclick="openMemoView('${m.id}')">
       <div class="mc-actions">
+        <button onclick="event.stopPropagation();togglePinMemo('${m.id}')" title="${pinnedMemoIds.has(m.id) ? '고정 해제' : '대시보드에 고정'}" style="color:${pinnedMemoIds.has(m.id) ? 'var(--warn)' : 'var(--txt3)'}">${pinnedMemoIds.has(m.id) ? '📌' : '📍'}</button>
         <button onclick="event.stopPropagation();copyMemoText('${m.id}')" title="클립보드 복사"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
         <button onclick="event.stopPropagation();openMemoEdit('${m.id}')" title="편집"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
         <button onclick="event.stopPropagation();deleteMemo('${m.id}')" title="삭제" style="color:var(--danger)"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>
@@ -4820,8 +4923,9 @@
         </div>
         <div class="memos-view-grid" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr))">
           ${filteredMemos.map((m, i) => `
-            <div class="memo-card animate" draggable="true" ondragstart="onMemoDragStart(event, '${m.id}')" ondragend="onMemoDragEnd(event)" style="background:${m.color || MEMO_COLORS[i % MEMO_COLORS.length]}" onclick="openMemoView('${m.id}')">
+            <div class="memo-card animate" draggable="true" ondragstart="onMemoDragStart(event, '${m.id}')" ondragend="onMemoDragEnd(event)" style="background:${m.color || MEMO_COLORS[i % MEMO_COLORS.length]};${pinnedMemoIds.has(m.id) ? 'outline:2px solid var(--p);outline-offset:-2px' : ''}" onclick="openMemoView('${m.id}')">
               <div class="mc-actions">
+                <button onclick="event.stopPropagation();togglePinMemo('${m.id}')" title="${pinnedMemoIds.has(m.id) ? '고정 해제' : '대시보드에 고정'}" style="color:${pinnedMemoIds.has(m.id) ? 'var(--warn)' : 'var(--txt3)'}">${pinnedMemoIds.has(m.id) ? '📌' : '📍'}</button>
                 <button onclick="event.stopPropagation();copyMemoText('${m.id}')" title="클립보드 복사"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
                 <button onclick="event.stopPropagation();openMemoEdit('${m.id}')" title="편집"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
                 <button onclick="event.stopPropagation();deleteMemo('${m.id}')" title="삭제" style="color:var(--danger)"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>
@@ -5076,7 +5180,10 @@
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
         ${lectureNotes.map((m, i) => `
           <div class="memo-card" style="background:${m.color || '#e8f5e9'}" onclick="openMemoView('${m.id}')">
-            <div class="mc-actions"><button onclick="event.stopPropagation();openMemoEdit('${m.id}')"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button></div>
+            <div class="mc-actions">
+              <button onclick="event.stopPropagation();togglePinMemo('${m.id}')" title="${pinnedMemoIds.has(m.id) ? '고정 해제' : '대시보드에 고정'}" style="color:${pinnedMemoIds.has(m.id) ? 'var(--warn)' : 'var(--txt3)'}">${pinnedMemoIds.has(m.id) ? '📌' : '📍'}</button>
+              <button onclick="event.stopPropagation();openMemoEdit('${m.id}')"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+            </div>
             <div class="mc-title">${(m.title || '').replace('[강의]', '').trim()}</div>
             <div class="mc-content">${(m.content || '').slice(0, 80)}</div>
           </div>`).join('')}
@@ -5465,6 +5572,75 @@
                 showToast('클립보드에 복사됐어요! 📋');
             });
         }
+        // ===================== RELATED MEMOS =====================
+        const STOP_WORDS = new Set([
+            '이','가','을','를','의','에','에서','와','과','도','는','은','한','로','으로',
+            '하기','완료','일정','미팅','회의','오늘','내일','예정','부터','까지','위해',
+            '대한','관련','통해','위한','대해','따른','하여','하고','있는','있는','할','할'
+        ]);
+
+        function extractKeywords(title) {
+            return title
+                .split(/[\s\.,\-_!?()\[\]\/\\:;'"#@&*+=%]/)
+                .map(w => w.trim())
+                .filter(w => w.length >= 2)
+                .filter(w => !STOP_WORDS.has(w));
+        }
+
+        function findRelatedMemos(task) {
+            const keywords = extractKeywords(task.title || '');
+            if (!keywords.length) return [];
+            return memos
+                .map(m => {
+                    let score = 0;
+                    keywords.forEach(kw => {
+                        if ((m.title || '').includes(kw))    score += 3;
+                        if ((m.content || '').includes(kw))  score += 1;
+                        if ((m.category || '').includes(kw)) score += 2;
+                    });
+                    return { ...m, _score: score };
+                })
+                .filter(m => m._score > 0)
+                .sort((a, b) => b._score - a._score)
+                .slice(0, 3);
+        }
+
+        let _relatedPopupTimer = null;
+        function showRelatedMemosPopup(task) {
+            clearRelatedPopup();
+            const related = findRelatedMemos(task);
+            if (!related.length) return;
+            _relatedPopupTimer = setTimeout(() => renderRelatedPopup(related, task.title), 500);
+        }
+
+        function clearRelatedPopup() {
+            clearTimeout(_relatedPopupTimer);
+            const old = document.getElementById('related-popup');
+            if (old) old.remove();
+        }
+
+        function renderRelatedPopup(related, taskTitle) {
+            clearRelatedPopup();
+            const pop = document.createElement('div');
+            pop.id = 'related-popup';
+            pop.className = 'related-popup';
+            pop.innerHTML = `
+                <div class="related-popup-header">
+                    <span class="related-popup-title">📎 관련 메모</span>
+                    <button class="related-popup-close" onclick="clearRelatedPopup()">✕</button>
+                </div>
+                ${related.map(m => `
+                    <div class="related-popup-item" onclick="clearRelatedPopup();openMemoView('${m.id}')">
+                        <span class="related-popup-score">+${m._score}점</span>
+                        <div class="related-popup-item-title">${m.title || '(제목 없음)'}</div>
+                        <div class="related-popup-item-preview">${(m.content || m.checklist || '').slice(0, 60)}</div>
+                    </div>`).join('')}
+            `;
+            document.body.appendChild(pop);
+            // 8초 후 자동 닫기
+            setTimeout(clearRelatedPopup, 8000);
+        }
+
         function openEditTaskModal(id) {
             const t = tasks.find(x => x.id === id);
             if (!t) return;
@@ -5496,6 +5672,7 @@
             hiddenId.value = id;
             document.querySelector('#task-modal .modal-title').textContent = '✏️ Edit Task';
             document.getElementById('task-modal').classList.add('open');
+            showRelatedMemosPopup(t);
         }
         function copyMemoText(id) {
             const m = memos.find(x => x.id === id);
@@ -5818,9 +5995,9 @@
         // ===================== MISC =====================
         function closeModals() {
             document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open'));
-            // reset memo modal bg
             const mb = document.querySelector('#memo-modal .modal-box');
             if (mb) mb.style.background = '';
+            clearRelatedPopup();
         }
         function selectDate(d) {
             selectedDate = d;
@@ -5829,6 +6006,15 @@
             calMonth = parseInt(parts[1]) - 1;
             render7Day();
             render();
+            // 해당 날짜의 일정 중 가장 관련 메모가 많은 것으로 팝업
+            const dayTasks = tasks.filter(t => isRecurringMatch(t, d) && !t.completed);
+            if (dayTasks.length) {
+                const best = dayTasks
+                    .map(t => ({ t, count: findRelatedMemos(t).length }))
+                    .filter(x => x.count > 0)
+                    .sort((a, b) => b.count - a.count)[0];
+                if (best) showRelatedMemosPopup(best.t);
+            }
         }
         function changeMonth(v) { calMonth += v; if (calMonth < 0) { calMonth = 11; calYear--; } if (calMonth > 11) { calMonth = 0; calYear++; } renderMiniCal(); }
 
