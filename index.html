@@ -3955,7 +3955,7 @@
 
                 const { data: dbSettings, error: settingsError } = await supabaseClient
                     .from('user_settings')
-                    .select('links')
+                    .select('links, task_categories, memo_categories')
                     .eq('user_id', currentUser.id)
                     .maybeSingle();
 
@@ -3963,9 +3963,19 @@
                 if (taskError) console.error('Task fetch error:', taskError);
 
                 // 2. 서버에 데이터가 있다면 로컬 데이터를 서버 데이터로 교체 (Single Source of Truth)
-                if (dbSettings && dbSettings.links && dbSettings.links.length > 0) {
-                    links = dbSettings.links;
-                    if (typeof renderQuickLinks === 'function') renderQuickLinks();
+                if (dbSettings) {
+                    if (dbSettings.links && dbSettings.links.length > 0) {
+                        links = dbSettings.links;
+                        if (typeof renderQuickLinks === 'function') renderQuickLinks();
+                    }
+                    if (dbSettings.task_categories && Object.keys(dbSettings.task_categories).length > 0) {
+                        catColors = dbSettings.task_categories;
+                        localStorage.setItem('pne_cats', JSON.stringify(catColors));
+                    }
+                    if (dbSettings.memo_categories && Object.keys(dbSettings.memo_categories).length > 0) {
+                        memoCats = dbSettings.memo_categories;
+                        localStorage.setItem('pne_memo_cats', JSON.stringify(memoCats));
+                    }
                 }
 
                 if (dbMemos && dbMemos.length > 0) {
@@ -4112,24 +4122,7 @@
             }
         }
 
-        async function syncCatsToSupabase() {
-            if (!supabaseClient || !currentUser) return;
-            try {
-                const catData = Object.entries(memoCats).map(([name, color]) => ({ name, color, user_id: currentUser.id }));
-                const { error } = await supabaseClient
-                    .from('memo_categories')
-                    .upsert(catData);
-                if (error) {
-                    console.error('Supabase cat sync error:', error);
-                    showToast('카테고리 동기화 실패: ' + error.message, 'err');
-                    throw error;
-                }
-            } catch (e) {
-                console.error('Supabase cat sync error:', e);
-            }
-        }
-
-        async function syncLinksToSupabase() {
+        async function syncSettingsToSupabase() {
             if (!supabaseClient || !currentUser) return false;
             try {
                 const { error } = await supabaseClient
@@ -4137,19 +4130,23 @@
                     .upsert({
                         user_id: currentUser.id,
                         links: links,
+                        task_categories: catColors,
+                        memo_categories: memoCats,
                         updated_at: new Date().toISOString()
                     }, { onConflict: 'user_id' });
                 if (error) {
-                    console.error('Links 저장 실패:', error);
-                    showToast('링크 저장 실패: ' + error.message, 'err');
+                    console.error('설정 저장 실패:', error);
+                    showToast('설정 저장 실패: ' + error.message, 'err');
                     return false;
                 }
                 return true;
             } catch (e) {
-                console.error('Links sync error:', e);
+                console.error('Settings sync error:', e);
                 return false;
             }
         }
+
+        function syncLinksToSupabase() { return syncSettingsToSupabase(); }
 
         // ===================== STATE =====================
         let tasks = JSON.parse(localStorage.getItem('pne_tasks') || '[]');
@@ -4805,7 +4802,7 @@
             const colors = ['#6366f1', '#f59e0b', '#10b981', '#3b82f6', '#ec4899', '#8b5cf6', '#06b6d4', '#ef4444'];
             memoCats[n] = colors[Object.keys(memoCats).length % colors.length];
             save(); render();
-            await syncCatsToSupabase();
+            await syncSettingsToSupabase();
             showToast(`"${n}" 카테고리가 추가됐어요! 🎉`, 'ok');
         }
         async function editMemoCat(oldName) {
@@ -4822,7 +4819,7 @@
             memos.forEach(m => { if (m.category === oldName) m.category = n; });
             if (memoCategoryFilter === oldName) memoCategoryFilter = n;
             save(); render();
-            await syncCatsToSupabase();
+            await syncSettingsToSupabase();
             // 메모들도 개별적으로 업데이트 필요할 수 있음 (또는 전체 sync)
             showToast(`"${oldName}" → "${n}" 이름이 변경됐어요.`, 'ok');
         }
@@ -4836,7 +4833,7 @@
             memos.forEach(m => { if (m.category === name) m.category = ''; });
             if (memoCategoryFilter === name) memoCategoryFilter = 'ALL';
             save(); render();
-            await syncCatsToSupabase();
+            await syncSettingsToSupabase();
             showToast(`"${name}" 카테고리가 삭제됐어요.`, 'ok');
         }
 
@@ -5070,12 +5067,12 @@
         <div class="setting-info" style="margin-bottom:10px"><h4>카테고리 관리</h4><p>태스크 카테고리와 색상을 편집합니다</p></div>
         <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
           ${Object.keys(catColors).map(cat => `<div style="display:flex;gap:6px;align-items:center">
-            <input type="color" value="${catColors[cat]}" style="width:30px;height:30px;padding:2px;border-radius:4px;border:1px solid var(--border2);background:none;cursor:pointer" onchange="catColors['${cat}']=this.value;save();render();renderSettings()">
-            <input value="${cat}" placeholder="이름" style="flex:1" onchange="const n=this.value.trim(); if(n && n!=='${cat}'){ catColors[n]=catColors['${cat}']; delete catColors['${cat}']; tasks.forEach(t=> {if(t.category==='${cat}') t.category=n;}); save(); render(); renderSettings(); renderCategorySelects(); }">
-            <button class="icon-btn" onclick="if(confirm('이 카테고리를 삭제할까요?')){ delete catColors['${cat}']; save(); render(); renderSettings(); renderCategorySelects(); }" title="삭제">✕</button>
+            <input type="color" value="${catColors[cat]}" style="width:30px;height:30px;padding:2px;border-radius:4px;border:1px solid var(--border2);background:none;cursor:pointer" onchange="catColors['${cat}']=this.value;save();render();renderSettings();syncSettingsToSupabase()">
+            <input value="${cat}" placeholder="이름" style="flex:1" onchange="const n=this.value.trim(); if(n && n!=='${cat}'){ catColors[n]=catColors['${cat}']; delete catColors['${cat}']; tasks.forEach(t=> {if(t.category==='${cat}') t.category=n;}); save(); render(); renderSettings(); renderCategorySelects(); syncSettingsToSupabase(); }">
+            <button class="icon-btn" onclick="if(confirm('이 카테고리를 삭제할까요?')){ delete catColors['${cat}']; save(); render(); renderSettings(); renderCategorySelects(); syncSettingsToSupabase(); }" title="삭제">✕</button>
           </div>`).join('')}
         </div>
-        <button class="btn btn-ghost" onclick="const n='새 카테고리_'+Date.now().toString().slice(-4); catColors[n]='#6366f1'; save(); render(); renderSettings(); renderCategorySelects()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> 추가</button>
+        <button class="btn btn-ghost" onclick="const n='새 카테고리_'+Date.now().toString().slice(-4); catColors[n]='#6366f1'; save(); render(); renderSettings(); renderCategorySelects(); syncSettingsToSupabase()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> 추가</button>
       </div>
       <div class="setting-card animate animate-d3">
         <div class="setting-info" style="margin-bottom:10px"><h4>Quick Links 관리</h4><p>사이드바 바로가기 링크를 편집합니다. 수정 후 저장 버튼을 눌러주세요.</p></div>
