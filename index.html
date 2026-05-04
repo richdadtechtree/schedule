@@ -3961,9 +3961,11 @@
 
                 if (memoError) console.error('Memo fetch error:', memoError);
                 if (taskError) console.error('Task fetch error:', taskError);
+                if (settingsError) console.error('Settings fetch error:', settingsError);
 
                 // 2. 서버에 데이터가 있다면 로컬 데이터를 서버 데이터로 교체 (Single Source of Truth)
-                if (dbSettings) {
+                let hasDbCategories = false;
+                if (dbSettings && !settingsError) {
                     if (dbSettings.links && dbSettings.links.length > 0) {
                         links = dbSettings.links;
                         if (typeof renderQuickLinks === 'function') renderQuickLinks();
@@ -3972,11 +3974,17 @@
                         catColors = dbSettings.task_categories;
                         localStorage.setItem('pne_cats', JSON.stringify(catColors));
                         if (typeof renderCategorySelects === 'function') renderCategorySelects();
+                        hasDbCategories = true;
                     }
                     if (dbSettings.memo_categories && Object.keys(dbSettings.memo_categories).length > 0) {
                         memoCats = dbSettings.memo_categories;
                         localStorage.setItem('pne_memo_cats', JSON.stringify(memoCats));
+                        hasDbCategories = true;
                     }
+                }
+                // DB에 카테고리가 없으면 현재 로컬 설정을 DB에 업로드 (첫 로그인 seed)
+                if (!hasDbCategories && !settingsError) {
+                    syncSettingsToSupabase();
                 }
 
                 if (dbMemos && dbMemos.length > 0) {
@@ -5073,7 +5081,10 @@
             <button class="icon-btn" onclick="if(confirm('이 카테고리를 삭제할까요?')){ delete catColors['${cat}']; save(); render(); renderSettings(); renderCategorySelects(); syncSettingsToSupabase(); }" title="삭제">✕</button>
           </div>`).join('')}
         </div>
-        <button class="btn btn-ghost" onclick="const n='새 카테고리_'+Date.now().toString().slice(-4); catColors[n]='#6366f1'; save(); render(); renderSettings(); renderCategorySelects(); syncSettingsToSupabase()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> 추가</button>
+        <div style="display:flex;gap:8px;margin-top:4px">
+          <button class="btn btn-ghost" onclick="const n='새 카테고리_'+Date.now().toString().slice(-4); catColors[n]='#6366f1'; save(); render(); renderSettings(); renderCategorySelects(); syncSettingsToSupabase()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> 추가</button>
+          <button class="btn btn-ghost" onclick="syncSettingsToSupabase().then(ok=>showToast(ok?'☁ 카테고리가 클라우드에 저장됐습니다':'저장 실패 (로그인 확인)', ok?'ok':'err'))" title="현재 카테고리를 DB에 강제 저장">☁ 지금 저장</button>
+        </div>
       </div>
       <div class="setting-card animate animate-d3">
         <div class="setting-info" style="margin-bottom:10px"><h4>Quick Links 관리</h4><p>사이드바 바로가기 링크를 편집합니다. 수정 후 저장 버튼을 눌러주세요.</p></div>
