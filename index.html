@@ -3971,6 +3971,7 @@
                     if (dbSettings.task_categories && Object.keys(dbSettings.task_categories).length > 0) {
                         catColors = dbSettings.task_categories;
                         localStorage.setItem('pne_cats', JSON.stringify(catColors));
+                        if (typeof renderCategorySelects === 'function') renderCategorySelects();
                     }
                     if (dbSettings.memo_categories && Object.keys(dbSettings.memo_categories).length > 0) {
                         memoCats = dbSettings.memo_categories;
@@ -6030,6 +6031,7 @@
                             memoCats = data.memoCats || memoCats;
                             checklistItems = data.checklistItems || checklistItems;
                             weatherLoc = data.weatherLoc || weatherLoc;
+                            syncSettingsToSupabase();
                             showToast('데이터가 복구되었습니다 🔄', 'ok');
                         }
                     }
