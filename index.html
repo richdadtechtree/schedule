@@ -1682,6 +1682,42 @@
             background: rgba(255, 255, 255, 0.2);
         }
 
+        /* 모바일 전용 가로 스크롤 칩 필터 */
+        .memo-cat-filter {
+            display: none;
+        }
+        .memo-cat-chip {
+            flex-shrink: 0;
+            white-space: nowrap;
+            padding: 6px 14px;
+            border-radius: 20px;
+            border: 1.5px solid var(--border2);
+            background: var(--surface);
+            color: var(--txt2);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all .2s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .memo-cat-chip.active {
+            background: var(--p);
+            color: #fff;
+            border-color: var(--p);
+        }
+        .memo-cat-chip-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .memo-cat-chip-count {
+            font-size: 10px;
+            opacity: .75;
+        }
+
         .mc-cat-tag {
             font-size: 9px;
             font-weight: 800;
@@ -3267,8 +3303,19 @@
                 grid-template-columns: repeat(2, 1fr);
             }
             .memo-layout { flex-direction: column; }
-            .memo-sidebar { width: 100%; position: static; }
+            .memo-sidebar { display: none; }
             .memos-grid { grid-template-columns: repeat(2, 1fr); }
+            .memo-cat-filter {
+                display: flex;
+                gap: 6px;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                padding-bottom: 4px;
+                flex-wrap: nowrap;
+                scrollbar-width: none;
+                margin-bottom: 14px;
+            }
+            .memo-cat-filter::-webkit-scrollbar { display: none; }
 
             /* Modals: full screen on mobile */
             .modal-box {
@@ -4725,6 +4772,13 @@
     </div>
     <div class="memo-layout">
       <div class="memo-main">
+        <div class="memo-cat-filter">
+          <button class="memo-cat-chip ${memoCategoryFilter === 'ALL' ? 'active' : ''}" onclick="setMemoFilter('ALL')">전체 <span class="memo-cat-chip-count">${fMemos.length}</span></button>
+          ${Object.entries(memoCats).map(([c, color]) => {
+            const cnt = fMemos.filter(m => m.category === c).length;
+            return `<button class="memo-cat-chip ${memoCategoryFilter === c ? 'active' : ''}" onclick="setMemoFilter('${c}')"><span class="memo-cat-chip-dot" style="background:${color}"></span>${c} <span class="memo-cat-chip-count">${cnt}</span></button>`;
+          }).join('')}
+        </div>
         <div class="memos-view-grid" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr))">
           ${filteredMemos.map((m, i) => `
             <div class="memo-card animate" draggable="true" ondragstart="onMemoDragStart(event, '${m.id}')" ondragend="onMemoDragEnd(event)" style="background:${m.color || MEMO_COLORS[i % MEMO_COLORS.length]}" onclick="openMemoView('${m.id}')">
