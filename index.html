@@ -3248,7 +3248,16 @@
             .header-right { gap: 5px; flex-shrink: 0; }
             .weather-chip { display: none; }
             .pomo-chip { font-size: 10px; padding: 4px 8px; }
-            .btn-warn, .btn-primary { display: none; }
+            .header .btn-warn,
+            .header .btn-primary { display: none; }
+            .modal-box .btn-primary,
+            .modal-box .btn-warn {
+                display: flex !important;
+                width: 100%;
+                justify-content: center;
+                padding: 14px;
+                font-size: 14px;
+            }
             .auth-container { display: none; }
 
             /* Date strip */
