@@ -3995,6 +3995,7 @@
             </div>
             <div class="mv-content" id="mv-content">Memo Content</div>
             <div id="mv-checklist-container"></div>
+            <div id="mv-cat-change-container"></div>
             <div class="mv-footer">
                 <button class="btn btn-secondary" onclick="closeModals()">닫기</button>
                 <button class="btn btn-primary" id="mv-edit-btn">
@@ -5008,8 +5009,8 @@
               <div class="mc-title" contenteditable="false" id="mc-title-${m.id}">${m.title || 'Memo'}</div>
               <div class="mc-content" contenteditable="false" id="mc-content-${m.id}" style="white-space:pre-wrap;margin-bottom:12px">${m.content || ''}</div>
               ${m.category ? `<div class="mc-cat-tag" style="background:${memoCats[m.category] ? memoCats[m.category] + '22' : 'rgba(0,0,0,0.07)'};color:${memoCats[m.category] || 'var(--txt2)'}">${m.category}</div>` : ''}
-              <div class="mc-cat-move">
-                <select onchange="changeMemoCategory('${m.id}', this.value)">
+              <div class="mc-cat-move" onclick="event.stopPropagation()">
+                <select onclick="event.stopPropagation()" onchange="event.stopPropagation();changeMemoCategory('${m.id}', this.value)">
                   <option value="">이동...</option>
                   ${Object.keys(memoCats).map(c => `<option value="${c}" ${m.category === c ? 'selected' : ''}>${c}</option>`).join('')}
                 </select>
@@ -5074,6 +5075,16 @@
                 await syncMemoToSupabase(m);
                 showToast(`메모가 ${newCat || '미분류'} 카테고리로 이동되었습니다.`, 'ok');
             }
+        }
+
+        async function mvChangeCat(memoId, cat) {
+            const m = memos.find(x => x.id === memoId);
+            if (!m) return;
+            m.category = cat;
+            save(); render();
+            await syncMemoToSupabase(m);
+            showToast(`카테고리를 "${cat}"으로 변경했어요`, 'ok');
+            openMemoView(memoId);
         }
         async function addMemoCat() {
             const name = prompt('새 카테고리 이름을 입력하세요:');
@@ -5960,6 +5971,23 @@
                 `;
             } else {
                 clContainer.innerHTML = '';
+            }
+
+            // 카테고리 변경 칩
+            const catChangeContainer = document.getElementById('mv-cat-change-container');
+            if (catChangeContainer && Object.keys(memoCats).length) {
+                catChangeContainer.innerHTML = `
+                    <div style="margin-top:16px;padding-top:14px;border-top:0.5px solid var(--border2)">
+                        <div style="font-size:11px;color:var(--txt3);font-weight:700;margin-bottom:8px">카테고리 변경</div>
+                        <div style="display:flex;gap:6px;flex-wrap:wrap">
+                            ${Object.entries(memoCats).map(([c, color]) => `
+                                <button onclick="event.stopPropagation();mvChangeCat('${id}','${c}')"
+                                    style="padding:5px 12px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;border:1.5px solid ${color};background:${m.category === c ? color : 'transparent'};color:${m.category === c ? '#fff' : color};transition:all .15s">${c}</button>
+                            `).join('')}
+                        </div>
+                    </div>`;
+            } else if (catChangeContainer) {
+                catChangeContainer.innerHTML = '';
             }
 
             const editBtn = document.getElementById('mv-edit-btn');
