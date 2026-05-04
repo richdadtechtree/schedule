@@ -5932,19 +5932,30 @@
 
             const clContainer = document.getElementById('mv-checklist-container');
             if (m.checklist) {
-                const items = m.checklist.split('\n').filter(Boolean);
+                const items  = m.checklist.split('\n').filter(Boolean);
                 const checks = checklistItems[m.id] || [];
+                const done   = items.filter((_, i) => checks[i]).length;
+                const pct    = items.length ? Math.round(done / items.length * 100) : 0;
+                const CHECK_SVG = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
                 clContainer.innerHTML = `
-                    <div style="margin-top:20px; padding-top:20px; border-top:1px dashed var(--border)">
-                        <div style="font-weight:700; margin-bottom:12px; font-size:13px; color:var(--txt)">✅ 체크리스트</div>
+                    <div style="margin-top:20px;padding-top:16px;border-top:1px dashed var(--border)">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                            <span style="font-weight:700;font-size:13px">✅ 체크리스트</span>
+                            <span id="mv-cl-prog-txt" style="font-size:11px;color:var(--p);font-weight:700">${done}/${items.length}</span>
+                        </div>
+                        <div style="height:4px;background:var(--border2);border-radius:2px;margin-bottom:14px;overflow:hidden">
+                            <div id="mv-cl-prog-bar" style="height:100%;background:var(--p);border-radius:2px;width:${pct}%;transition:width .3s"></div>
+                        </div>
                         ${items.map((item, i) => `
-                            <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px; opacity:${checks[i] ? 0.6 : 1}">
-                                <div style="width:18px; height:18px; border-radius:5px; border:1.5px solid ${checks[i] ? 'var(--p)' : 'var(--border)'}; display:flex; align-items:center; justify-content:center; background:${checks[i] ? 'var(--p)' : 'transparent'}">
-                                    ${checks[i] ? '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
+                            <label onclick="event.stopPropagation();mvToggleCheck('${m.id}',${i},this)"
+                                style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;cursor:pointer;transition:background .15s;margin-bottom:4px;background:${checks[i] ? 'rgba(99,102,241,.08)' : 'transparent'}">
+                                <div id="mv-cl-box-${m.id}-${i}" style="width:20px;height:20px;border-radius:6px;flex-shrink:0;border:2px solid ${checks[i] ? 'var(--p)' : 'var(--border)'};background:${checks[i] ? 'var(--p)' : 'transparent'};display:flex;align-items:center;justify-content:center;transition:all .15s">
+                                    ${checks[i] ? CHECK_SVG : ''}
                                 </div>
-                                <span style="font-size:14px; text-decoration:${checks[i] ? 'line-through' : 'none'}">${item}</span>
-                            </div>
-                        `).join('')}
+                                <span id="mv-cl-span-${m.id}-${i}" style="font-size:14px;line-height:1.4;text-decoration:${checks[i] ? 'line-through' : 'none'};color:${checks[i] ? 'var(--txt3)' : 'var(--txt)'}">
+                                    ${item}
+                                </span>
+                            </label>`).join('')}
                     </div>
                 `;
             } else {
@@ -6053,6 +6064,46 @@
             const m = memos.find(x => x.id === memoId);
             if (m) await syncMemoToSupabase(m);
         }
+        async function mvToggleCheck(memoId, idx, labelEl) {
+            if (!checklistItems[memoId]) checklistItems[memoId] = [];
+            const newVal = !checklistItems[memoId][idx];
+            checklistItems[memoId][idx] = newVal;
+            save();
+
+            // 라벨 즉시 업데이트
+            const CHECK_SVG = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+            const box  = document.getElementById(`mv-cl-box-${memoId}-${idx}`);
+            const span = document.getElementById(`mv-cl-span-${memoId}-${idx}`);
+            if (box) {
+                box.style.background  = newVal ? 'var(--p)' : 'transparent';
+                box.style.borderColor = newVal ? 'var(--p)' : 'var(--border)';
+                box.innerHTML         = newVal ? CHECK_SVG : '';
+            }
+            if (span) {
+                span.style.textDecoration = newVal ? 'line-through' : 'none';
+                span.style.color          = newVal ? 'var(--txt3)' : 'var(--txt)';
+            }
+            if (labelEl) labelEl.style.background = newVal ? 'rgba(99,102,241,.08)' : 'transparent';
+
+            // 팝업 진행률 바 업데이트
+            const m = memos.find(x => x.id === memoId);
+            if (m && m.checklist) {
+                const total = m.checklist.split('\n').filter(Boolean).length;
+                const done  = (checklistItems[memoId] || []).filter(Boolean).length;
+                const pct   = Math.round(done / total * 100);
+                const bar   = document.getElementById('mv-cl-prog-bar');
+                const txt   = document.getElementById('mv-cl-prog-txt');
+                if (bar) bar.style.width  = pct + '%';
+                if (txt) txt.textContent  = `${done}/${total}`;
+            }
+
+            // 메모 카드 진행바 동기화
+            updateClProgress(memoId);
+
+            // Supabase 동기화
+            if (m) await syncMemoToSupabase(m);
+        }
+
         function updateClProgress(memoId) {
             const m = memos.find(x => x.id === memoId);
             if (!m || !m.checklist) return;
