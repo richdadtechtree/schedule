@@ -5963,7 +5963,10 @@
                     <div style="margin-top:20px;padding-top:16px;border-top:1px dashed var(--border)">
                         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
                             <span style="font-weight:700;font-size:13px">✅ 체크리스트</span>
-                            <span id="mv-cl-prog-txt" style="font-size:11px;color:var(--p);font-weight:700">${done}/${items.length}</span>
+                            <div style="display:flex;align-items:center;gap:8px">
+                                ${done > 0 ? `<button onclick="event.stopPropagation();mvDeleteDoneItems('${m.id}')" style="font-size:11px;color:var(--danger);background:none;border:none;cursor:pointer;padding:2px 8px;border-radius:6px;font-weight:600">완료 삭제</button>` : ''}
+                                <span id="mv-cl-prog-txt" style="font-size:11px;color:var(--p);font-weight:700">${done}/${items.length}</span>
+                            </div>
                         </div>
                         <div style="height:4px;background:var(--border2);border-radius:2px;margin-bottom:14px;overflow:hidden">
                             <div id="mv-cl-prog-bar" style="height:100%;background:var(--p);border-radius:2px;width:${pct}%;transition:width .3s"></div>
@@ -5977,6 +5980,11 @@
                                 <span id="mv-cl-span-${m.id}-${i}" style="font-size:14px;line-height:1.4;text-decoration:${checks[i] ? 'line-through' : 'none'};color:${checks[i] ? 'var(--txt3)' : 'var(--txt)'}">
                                     ${item}
                                 </span>
+                                <button onclick="event.stopPropagation();mvDeleteCheckItem('${m.id}',${i})"
+                                    style="margin-left:auto;flex-shrink:0;width:26px;height:26px;border:none;background:none;cursor:pointer;color:var(--txt3);border-radius:6px;display:flex;align-items:center;justify-content:center;transition:color .15s"
+                                    onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='var(--txt3)'">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                                </button>
                             </label>`).join('')}
                     </div>
                 `;
@@ -6141,6 +6149,34 @@
 
             // Supabase 동기화
             if (m) await syncMemoToSupabase(m);
+        }
+
+        function mvDeleteCheckItem(memoId, idx) {
+            const m = memos.find(x => x.id === memoId);
+            if (!m) return;
+            const items = m.checklist.split('\n').filter(Boolean);
+            items.splice(idx, 1);
+            m.checklist = items.join('\n');
+            const checks = checklistItems[memoId] || [];
+            checks.splice(idx, 1);
+            checklistItems[memoId] = checks;
+            save();
+            syncMemoToSupabase(m);
+            openMemoView(memoId);
+        }
+
+        function mvDeleteDoneItems(memoId) {
+            const m = memos.find(x => x.id === memoId);
+            if (!m) return;
+            const items = m.checklist.split('\n').filter(Boolean);
+            const checks = checklistItems[memoId] || [];
+            const newItems  = items.filter((_, i) => !checks[i]);
+            const newChecks = newItems.map(() => false);
+            m.checklist = newItems.join('\n');
+            checklistItems[memoId] = newChecks;
+            save();
+            syncMemoToSupabase(m);
+            openMemoView(memoId);
         }
 
         function updateClProgress(memoId) {
