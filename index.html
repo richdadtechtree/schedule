@@ -1566,14 +1566,6 @@
             margin-bottom: 30px;
         }
 
-        .mv-footer {
-            display: flex;
-            justify-content: flex-end;
-            gap: 12px;
-            padding-top: 24px;
-            border-top: 1px solid var(--border2);
-        }
-
         .mv-close {
             position: absolute;
             top: 20px;
@@ -1595,6 +1587,29 @@
             background: var(--danger);
             color: #fff;
             transform: rotate(90deg);
+        }
+
+        .mv-edit-top {
+            position: absolute;
+            top: 16px;
+            right: 64px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            background: var(--p);
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 700;
+            transition: opacity .2s, transform .15s;
+        }
+
+        .mv-edit-top:hover {
+            opacity: .85;
+            transform: translateY(-1px);
         }
 
         @keyframes modal-pop {
@@ -3989,6 +4004,14 @@
     <div class="modal-overlay" id="memo-view-modal">
         <div class="memo-view-card" id="memo-view-card">
             <button class="mv-close" onclick="closeModals()">✕</button>
+            <button class="mv-edit-top" id="mv-edit-btn">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2-2h14a2 2 0 0 0 2-2v-7" />
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                </svg>
+                편집
+            </button>
             <div id="mv-cat-container" style="margin-bottom: 12px;"></div>
             <div class="mv-header">
                 <div class="mv-title" id="mv-title">Memo Title</div>
@@ -3996,17 +4019,6 @@
             <div class="mv-content" id="mv-content">Memo Content</div>
             <div id="mv-checklist-container"></div>
             <div id="mv-cat-change-container"></div>
-            <div class="mv-footer">
-                <button class="btn btn-secondary" onclick="closeModals()">닫기</button>
-                <button class="btn btn-primary" id="mv-edit-btn">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-                        stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2-2h14a2 2 0 0 0 2-2v-7" />
-                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                    </svg>
-                    편집하기
-                </button>
-            </div>
         </div>
     </div>
 
