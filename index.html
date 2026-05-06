@@ -4058,7 +4058,7 @@
 
         async function handleSignIn() {
             try {
-                const redirectUrl = 'https://richdadtechtree.github.io/schedule/';
+                const redirectUrl = window.location.origin + window.location.pathname;
                 console.log('Attempting login with redirectUrl:', redirectUrl);
 
                 const { error } = await supabaseClient.auth.signInWithOAuth({
