@@ -7113,7 +7113,7 @@
             };
         }
 
-        let recognition = null, isRecording = false, silenceTimer = null;
+        let recognition = null, isRecording = false, silenceTimer = null, voiceBuffer = '';
         function toggleVoice() {
             if (isRecording) {
                 if (recognition) recognition.stop();
@@ -7139,6 +7139,7 @@
 
             recognition.onstart = () => {
                 isRecording = true;
+                voiceBuffer = '';
                 document.getElementById('voice-btn').classList.add('recording');
                 document.getElementById('voice-txt').textContent = '듣고 있어요...';
                 document.getElementById('voice-preview').classList.add('show');
@@ -7150,17 +7151,18 @@
             };
             recognition.onresult = (e) => {
                 resetSilenceTimer();
-                let interim = '', final = '';
+                let interim = '';
                 for (let i = e.resultIndex; i < e.results.length; ++i) {
-                    if (e.results[i].isFinal) final += e.results[i][0].transcript;
+                    if (e.results[i].isFinal) voiceBuffer += e.results[i][0].transcript;
                     else interim += e.results[i][0].transcript;
                 }
-                document.getElementById('voice-preview').textContent = final || interim;
+                document.getElementById('voice-preview').textContent = voiceBuffer + interim;
             };
             recognition.onerror = (e) => { stopVoice(); if (e.error === 'not-allowed') showToast('마이크 권한이 필요합니다.', 'err'); };
             recognition.onend = async () => {
-                const txt = document.getElementById('voice-preview').textContent;
-                if (isRecording && txt.trim()) {
+                const txt = voiceBuffer.trim();
+                voiceBuffer = '';
+                if (txt) {
                     await saveVoiceResult(txt);
                 }
                 stopVoice();
