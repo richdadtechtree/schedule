@@ -5840,6 +5840,11 @@
             e.currentTarget.classList.add('drag-over');
         }
         function onDragLeave(e) {
+            const rect = e.currentTarget.getBoundingClientRect();
+            if (e.clientX >= rect.left && e.clientX <= rect.right && 
+                e.clientY >= rect.top && e.clientY <= rect.bottom) {
+                return;
+            }
             e.currentTarget.classList.remove('drag-over');
         }
         async function onDropKanban(e, colLabel) {
