@@ -4423,6 +4423,7 @@
 
                 // 2. 서버에 데이터가 있다면 로컬 데이터를 서버 데이터로 교체 (Single Source of Truth)
                 let hasDbCategories = false;
+                let needsSettingsSync = false;
                 if (dbSettings && !settingsError) {
                     if (dbSettings.links && dbSettings.links.length > 0) {
                         links = dbSettings.links;
@@ -4446,14 +4447,18 @@
                     if (dbSettings.memo_lock_enabled !== undefined && dbSettings.memo_lock_enabled !== null) {
                         memoLockEnabled = dbSettings.memo_lock_enabled === true;
                         localStorage.setItem('pne_memo_lock', String(memoLockEnabled));
+                    } else {
+                        needsSettingsSync = true;
                     }
                     if (dbSettings.lock_pin !== undefined && dbSettings.lock_pin !== null) {
                         lockPin = dbSettings.lock_pin;
                         localStorage.setItem('pne_pin', lockPin);
+                    } else {
+                        needsSettingsSync = true;
                     }
                 }
-                // DB에 카테고리가 없으면 현재 로컬 설정을 DB에 업로드 (첫 로그인 seed)
-                if (!hasDbCategories && !settingsError) {
+                // DB에 카테고리가 없거나 새로운 잠금 설정이 비어있다면 현재 로컬 설정을 DB에 업로드 (동기화 세팅)
+                if ((!hasDbCategories || needsSettingsSync) && !settingsError) {
                     syncSettingsToSupabase();
                 }
 
