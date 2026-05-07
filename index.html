@@ -5,7 +5,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>vibe.</title>
     <link
         href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700;800;900&family=Outfit:wght@700;800;900&display=swap"
@@ -3328,6 +3328,13 @@
         }
 
         @media (max-width: 768px) {
+            html, body {
+                overflow-x: hidden;
+                overscroll-behavior-x: none;
+                width: 100vw;
+                position: relative;
+            }
+
             :root {
                 --sidebar: 260px;
             }
@@ -3508,7 +3515,7 @@
 
             /* Memos */
             .memos-view-grid {
-                grid-template-columns: repeat(2, 1fr);
+                grid-template-columns: 1fr;
             }
 
             .memo-layout {
@@ -3520,7 +3527,11 @@
             }
 
             .memos-grid {
-                grid-template-columns: repeat(2, 1fr);
+                grid-template-columns: 1fr;
+            }
+
+            .memo-card {
+                font-size: 13px; /* 가독성을 위해 폰트 크기 증가 */
             }
 
             .memo-cat-filter {
