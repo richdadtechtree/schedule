@@ -1803,7 +1803,7 @@
             top: 6px;
             right: 6px;
             display: none;
-            gap: 4px
+            p: 4px
         }
 
 
@@ -4267,16 +4267,19 @@
     </div>
 
     <div class="modal-overlay" id="memo-unlock-modal" onclick="if(event.target===this)this.classList.remove('open')">
-        <div style="background:var(--surface);border-radius:20px;padding:28px 24px;width:300px;max-width:90vw;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+        <div
+            style="background:var(--surface);border-radius:20px;padding:28px 24px;width:300px;max-width:90vw;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3)">
             <div style="font-size:36px;margin-bottom:12px">🔒</div>
             <div style="font-weight:800;font-size:15px;margin-bottom:6px;color:var(--txt)">잠긴 메모</div>
             <div style="font-size:12px;color:var(--txt3);margin-bottom:20px">비밀번호를 입력해주세요</div>
             <input type="password" id="memo-unlock-input" maxlength="8" placeholder="비밀번호" inputmode="numeric"
                 style="width:160px;padding:10px 14px;border-radius:10px;border:1.5px solid var(--border2);font-size:16px;background:var(--surface2);color:var(--txt);letter-spacing:4px;text-align:center;display:block;margin:0 auto"
                 onkeydown="if(event.key==='Enter') submitMemoUnlock()">
-            <div id="memo-unlock-err" style="font-size:10px;color:var(--danger);margin-top:8px;font-weight:700;min-height:14px"></div>
+            <div id="memo-unlock-err"
+                style="font-size:10px;color:var(--danger);margin-top:8px;font-weight:700;min-height:14px"></div>
             <div style="display:flex;gap:8px;justify-content:center;margin-top:12px">
-                <button class="btn btn-ghost" onclick="document.getElementById('memo-unlock-modal').classList.remove('open')">취소</button>
+                <button class="btn btn-ghost"
+                    onclick="document.getElementById('memo-unlock-modal').classList.remove('open')">취소</button>
                 <button class="btn btn-primary" onclick="submitMemoUnlock()">확인</button>
             </div>
         </div>
@@ -5061,14 +5064,14 @@
       </div>
       <div class="mc-title">${m.title || 'Memo'}${m.locked ? ' <span style="font-size:10px;opacity:.7">🔒</span>' : ''}</div>
       ${memoLockEnabled && m.locked ?
-        `<div class="mc-content" style="color:var(--txt3);font-style:italic;font-size:10px">잠긴 메모입니다</div>` :
-        (!m.checklist ? `<div class="mc-content">${(m.content || '').slice(0, 60)}${(m.content || '').length > 60 ? '...' : ''}</div>` : '') +
-        (m.checklist ? (() => {
-                    const ci = m.checklist.split('\n').filter(Boolean);
-                    const cc = checklistItems[m.id] || [];
-                    const cd = ci.filter((_, i) => cc[i]).length;
-                    const cp = ci.length ? Math.round(cd / ci.length * 100) : 0;
-                    return `<div class="mc-checklist" style="margin-top:5px">
+                    `<div class="mc-content" style="color:var(--txt3);font-style:italic;font-size:10px">잠긴 메모입니다</div>` :
+                    (!m.checklist ? `<div class="mc-content">${(m.content || '').slice(0, 60)}${(m.content || '').length > 60 ? '...' : ''}</div>` : '') +
+                    (m.checklist ? (() => {
+                        const ci = m.checklist.split('\n').filter(Boolean);
+                        const cc = checklistItems[m.id] || [];
+                        const cd = ci.filter((_, i) => cc[i]).length;
+                        const cp = ci.length ? Math.round(cd / ci.length * 100) : 0;
+                        return `<div class="mc-checklist" style="margin-top:5px">
           ${ci.slice(0, 4).map((item, idx) => `
             <label class="mc-checklist-item${cc[idx] ? ' checked-item' : ''}" data-cl="${m.id}-${idx}" onclick="event.stopPropagation()">
               <input type="checkbox" ${cc[idx] ? 'checked' : ''} onchange="toggleCheckItem('${m.id}',${idx},this.checked)" onclick="event.stopPropagation()">
@@ -5080,8 +5083,8 @@
             <span class="cl-progress-text" data-cl-txt="${m.id}">${cd}/${ci.length}</span>
           </div>
         </div>`;
-                })() : '')
-      }
+                    })() : '')
+                }
     </div>`).join('') || '<div class="empty" style="grid-column:span 3"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8l6-6V4a2 2 0 0 0-2-2z"/><polyline points="14 2 14 8 20 8"/></svg>No memos yet</div>';
 
             const insight = generateInsight(fTasks);
@@ -5292,9 +5295,9 @@
               </div>
               <div class="mc-title" contenteditable="false" id="mc-title-${m.id}">${m.title || 'Memo'}${m.locked ? ' <span style="font-size:10px;opacity:.7">🔒</span>' : ''}</div>
               ${memoLockEnabled && m.locked ?
-                `<div class="mc-content" style="color:var(--txt3);font-style:italic;font-size:10px">잠긴 메모입니다</div>` :
-                `<div class="mc-content" contenteditable="false" id="mc-content-${m.id}" style="white-space:pre-wrap;margin-bottom:12px">${m.content || ''}</div>`
-              }
+                    `<div class="mc-content" style="color:var(--txt3);font-style:italic;font-size:10px">잠긴 메모입니다</div>` :
+                    `<div class="mc-content" contenteditable="false" id="mc-content-${m.id}" style="white-space:pre-wrap;margin-bottom:12px">${m.content || ''}</div>`
+                }
               ${m.category ? `<div class="mc-cat-tag" style="background:${memoCats[m.category] ? memoCats[m.category] + '22' : 'rgba(0,0,0,0.07)'};color:${memoCats[m.category] || 'var(--txt2)'}">${m.category}</div>` : ''}
               <div class="mc-cat-move" onclick="event.stopPropagation()">
                 <select onclick="event.stopPropagation()" onchange="event.stopPropagation();changeMemoCategory('${m.id}', this.value)">
@@ -5712,12 +5715,18 @@
             <button class="toggle${memoLockEnabled ? ' on' : ''}" onclick="memoLockEnabled=!memoLockEnabled;save();renderSettings();render()"></button>
           </div>
           ${memoLockEnabled ? `
-          <div style="display:flex;gap:8px;align-items:center;padding-top:8px;border-top:0.5px solid var(--border2);width:100%">
-            <div style="font-size:11px;color:var(--txt3);flex:1">현재 메모 PIN: ${memoPin.replace(/./g, '●')}</div>
-            <input type="password" id="memo-pin-new" maxlength="8" placeholder="새 비밀번호" inputmode="numeric"
-              style="width:130px;padding:8px 12px;border-radius:10px;border:1.5px solid var(--border2);font-size:13px;background:var(--surface2);color:var(--txt);letter-spacing:4px;text-align:center"
-              onkeydown="if(event.key==='Enter') changeMemoPin()">
-            <button class="btn btn-primary" onclick="changeMemoPin()">변경</button>
+          <div style="display:flex;flex-direction:column;gap:8px;padding-top:8px;border-top:0.5px solid var(--border2);width:100%">
+            <div style="font-size:11px;color:var(--txt3)">비밀번호 변경</div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input type="password" id="memo-pin-cur" maxlength="8" placeholder="현재 비밀번호" inputmode="numeric"
+                style="flex:1;padding:8px 12px;border-radius:10px;border:1.5px solid var(--border2);font-size:13px;background:var(--surface2);color:var(--txt);letter-spacing:4px;text-align:center"
+                onkeydown="if(event.key==='Enter') document.getElementById('memo-pin-new').focus()">
+              <input type="password" id="memo-pin-new" maxlength="8" placeholder="새 비밀번호" inputmode="numeric"
+                style="flex:1;padding:8px 12px;border-radius:10px;border:1.5px solid var(--border2);font-size:13px;background:var(--surface2);color:var(--txt);letter-spacing:4px;text-align:center"
+                onkeydown="if(event.key==='Enter') changeMemoPin()">
+              <button class="btn btn-primary" onclick="changeMemoPin()">변경</button>
+            </div>
+            <span id="memo-pin-msg" style="font-size:10px;font-weight:700;min-height:14px"></span>
           </div>` : ''}
         </div>
       </div>
