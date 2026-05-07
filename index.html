@@ -1620,6 +1620,29 @@
             transform: translateY(-1px);
         }
 
+        .mv-lock-top {
+            position: absolute;
+            top: 16px;
+            left: 20px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            background: var(--surface2);
+            color: var(--txt2);
+            border: 1.5px solid transparent;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 700;
+            transition: all .2s;
+        }
+
+        .mv-lock-top:hover {
+            opacity: .85;
+            transform: translateY(-1px);
+        }
+
         @keyframes modal-pop {
             from {
                 opacity: 0;
@@ -4247,6 +4270,7 @@
     <div class="modal-overlay" id="memo-view-modal">
         <div class="memo-view-card" id="memo-view-card" data-memo-id="">
             <button class="mv-close" onclick="closeModals()">✕</button>
+            <button class="mv-lock-top" id="mv-lock-btn" onclick="toggleMemoLock()">🔒 잠금</button>
             <button class="mv-edit-top" id="mv-edit-btn">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
                     stroke-linecap="round" stroke-linejoin="round">
@@ -4262,7 +4286,6 @@
             <div class="mv-content" id="mv-content">Memo Content</div>
             <div id="mv-checklist-container"></div>
             <div id="mv-cat-change-container"></div>
-            <div id="mv-lock-btn-container"></div>
         </div>
     </div>
 
@@ -6330,16 +6353,13 @@
                 openMemoEdit(id);
             };
 
-            // 잠금 토글 버튼
-            const lockContainer = document.getElementById('mv-lock-btn-container');
-            if (lockContainer) {
-                lockContainer.innerHTML = `
-                    <div style="margin-top:16px;padding-top:14px;border-top:0.5px solid var(--border2);display:flex;justify-content:flex-end">
-                        <button onclick="toggleMemoLock()"
-                            style="padding:6px 14px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;border:1.5px solid ${m.locked ? 'var(--danger)' : 'var(--border2)'};background:${m.locked ? 'rgba(244,63,94,.1)' : 'transparent'};color:${m.locked ? 'var(--danger)' : 'var(--txt3)'};transition:all .15s">
-                            ${m.locked ? '🔓 잠금 해제' : '🔒 잠금 설정'}
-                        </button>
-                    </div>`;
+            // 상단 잠금 버튼 상태 업데이트
+            const lockBtn = document.getElementById('mv-lock-btn');
+            if (lockBtn) {
+                lockBtn.textContent = m.locked ? '🔓 잠금 해제' : '🔒 잠금';
+                lockBtn.style.background = m.locked ? 'rgba(244,63,94,.1)' : 'var(--surface2)';
+                lockBtn.style.color = m.locked ? 'var(--danger)' : 'var(--txt2)';
+                lockBtn.style.borderColor = m.locked ? 'var(--danger)' : 'transparent';
             }
 
             const card = document.getElementById('memo-view-card');
