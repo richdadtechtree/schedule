@@ -4600,6 +4600,11 @@
 
         function syncLinksToSupabase() { return syncSettingsToSupabase(); }
         function syncPinnedToSupabase() { return syncSettingsToSupabase(); }
+        async function pushCategoriesToAll() {
+            if (!currentUser) { showToast('로그인이 필요합니다', 'err'); return; }
+            const ok = await syncSettingsToSupabase();
+            if (ok) showToast('✅ 이 PC 카테고리가 서버에 저장됐습니다. 다른 기기는 탭 전환 시 자동 반영됩니다.', 'ok');
+        }
 
         // ===================== STATE =====================
         let tasks = JSON.parse(localStorage.getItem('pne_tasks') || '[]');
@@ -5617,12 +5622,24 @@
       <div class="setting-card animate" style="animation-delay:.08s">
         <div class="setting-row">
           <div class="setting-info">
-            <h4>☁️ Supabase 클라우드 동기화</h4>
-            <p>메모와 카테고리를 Supabase 서버와 수동으로 동기화합니다</p>
+            <h4>☁️ 서버 → 이 PC 동기화</h4>
+            <p>서버의 최신 카테고리·메모를 이 PC로 당겨옵니다 (탭 전환 시 자동 실행)</p>
           </div>
           <button class="btn btn-primary" onclick="syncFromSupabase()">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            지금 동기화
+            당겨오기
+          </button>
+        </div>
+      </div>
+      <div class="setting-card animate" style="animation-delay:.09s">
+        <div class="setting-row">
+          <div class="setting-info">
+            <h4>📤 이 PC → 전체 기기 동기화</h4>
+            <p>이 PC의 카테고리를 서버에 올려 모바일·다른 PC가 이 PC 기준을 따르게 합니다</p>
+          </div>
+          <button class="btn btn-primary" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);white-space:nowrap" onclick="pushCategoriesToAll()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            이 PC 기준으로 올리기
           </button>
         </div>
       </div>
@@ -7540,6 +7557,13 @@
         }
 
         init();
+
+        // 탭이 다시 활성화될 때 DB에서 최신 설정(카테고리 등)을 자동으로 당겨옴
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible' && currentUser) {
+                syncFromSupabase();
+            }
+        });
     </script>
 
     <div class="toast" id="toast"></div>
