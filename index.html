@@ -4271,7 +4271,7 @@
             style="background:var(--surface);border-radius:20px;padding:28px 24px;width:300px;max-width:90vw;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3)">
             <div style="font-size:36px;margin-bottom:12px">🔒</div>
             <div style="font-weight:800;font-size:15px;margin-bottom:6px;color:var(--txt)">잠긴 메모</div>
-            <div style="font-size:12px;color:var(--txt3);margin-bottom:20px">비밀번호를 입력해주세요</div>
+            <div style="font-size:12px;color:var(--txt3);margin-bottom:20px">비밀번호를 입력해주세요 <span style="color:var(--txt3);font-size:10px">(초기값: 1234)</span></div>
             <input type="password" id="memo-unlock-input" maxlength="8" placeholder="비밀번호" inputmode="numeric"
                 style="width:160px;padding:10px 14px;border-radius:10px;border:1.5px solid var(--border2);font-size:16px;background:var(--surface2);color:var(--txt);letter-spacing:4px;text-align:center;display:block;margin:0 auto"
                 onkeydown="if(event.key==='Enter') submitMemoUnlock()">
@@ -4609,7 +4609,6 @@
         // ===================== STATE =====================
         let tasks = JSON.parse(localStorage.getItem('pne_tasks') || '[]');
         let memos = JSON.parse(localStorage.getItem('pne_memos') || '[]');
-        let memoPin = localStorage.getItem('pne_memo_pin') || '1111';
         let memoLockEnabled = localStorage.getItem('pne_memo_lock') === 'true';
         const DEFAULT_LINKS = [
             { name: 'Naver', url: 'https://naver.com', icon: 'naver' },
@@ -4708,7 +4707,6 @@
             localStorage.setItem('pne_memo_cats', JSON.stringify(memoCats));
             localStorage.setItem('pne_pinned_memos', JSON.stringify([...pinnedMemoIds]));
             localStorage.setItem('pne_weather_loc', weatherLoc);
-            localStorage.setItem('pne_memo_pin', memoPin);
             localStorage.setItem('pne_memo_lock', String(memoLockEnabled));
             scheduleNotifications();
         }
@@ -5713,38 +5711,29 @@
         </div>
       </div>
       <div class="setting-card animate animate-d3" style="animation-delay:.25s">
-        <div class="setting-info" style="margin-bottom:10px">
-          <h4>🔐 잠금 비밀번호 변경</h4>
-          <p>현재 PIN: ${lockPin.replace(/./g, '●')} &nbsp;(4자리 숫자)</p>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <input type="password" id="pin-new" maxlength="4" placeholder="새 PIN (4자리)" inputmode="numeric"
-            style="width:130px;padding:8px 12px;border-radius:10px;border:1.5px solid var(--border2);font-size:13px;background:var(--surface2);color:var(--txt);letter-spacing:4px;text-align:center"
-            onkeydown="if(event.key==='Enter') changePinFromSettings()">
-          <button class="btn btn-primary" onclick="changePinFromSettings()">변경</button>
-          <span id="pin-msg" style="font-size:10px;color:var(--acc);font-weight:700"></span>
-        </div>
-      </div>
-      <div class="setting-card animate animate-d3" style="animation-delay:.3s">
-        <div class="setting-row" style="align-items:flex-start;flex-direction:column;gap:10px">
-          <div style="display:flex;justify-content:space-between;align-items:center;width:100%">
-            <div class="setting-info"><h4>🔒 메모 잠금</h4><p>잠금된 메모는 비밀번호 없이 열 수 없습니다 (초기값: 1111)</p></div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div class="setting-info" style="margin-bottom:0">
+              <h4>🔐 잠금 비밀번호</h4>
+              <p>앱 잠금 및 메모 잠금에 공통으로 사용됩니다 (현재: ${lockPin.replace(/./g, '●')} · 초기값: <b>1234</b>)</p>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;padding-top:10px;border-top:0.5px solid var(--border2)">
+            <div style="display:flex;gap:8px;align-items:center">
+              <input type="password" id="pin-cur" maxlength="4" placeholder="현재 비밀번호" inputmode="numeric"
+                style="flex:1;padding:8px 12px;border-radius:10px;border:1.5px solid var(--border2);font-size:13px;background:var(--surface2);color:var(--txt);letter-spacing:4px;text-align:center"
+                onkeydown="if(event.key==='Enter') document.getElementById('pin-new').focus()">
+              <input type="password" id="pin-new" maxlength="4" placeholder="새 비밀번호" inputmode="numeric"
+                style="flex:1;padding:8px 12px;border-radius:10px;border:1.5px solid var(--border2);font-size:13px;background:var(--surface2);color:var(--txt);letter-spacing:4px;text-align:center"
+                onkeydown="if(event.key==='Enter') changePinFromSettings()">
+              <button class="btn btn-primary" onclick="changePinFromSettings()">변경</button>
+            </div>
+            <span id="pin-msg" style="font-size:10px;font-weight:700;min-height:14px"></span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding-top:10px;border-top:0.5px solid var(--border2)">
+            <div class="setting-info" style="margin-bottom:0"><h4>🔒 메모 잠금</h4><p>잠금된 메모는 위 비밀번호 없이 열 수 없습니다</p></div>
             <button class="toggle${memoLockEnabled ? ' on' : ''}" onclick="memoLockEnabled=!memoLockEnabled;save();renderSettings();render()"></button>
           </div>
-          ${memoLockEnabled ? `
-          <div style="display:flex;flex-direction:column;gap:8px;padding-top:8px;border-top:0.5px solid var(--border2);width:100%">
-            <div style="font-size:11px;color:var(--txt3)">비밀번호 변경</div>
-            <div style="display:flex;gap:8px;align-items:center">
-              <input type="password" id="memo-pin-cur" maxlength="8" placeholder="현재 비밀번호" inputmode="numeric"
-                style="flex:1;padding:8px 12px;border-radius:10px;border:1.5px solid var(--border2);font-size:13px;background:var(--surface2);color:var(--txt);letter-spacing:4px;text-align:center"
-                onkeydown="if(event.key==='Enter') document.getElementById('memo-pin-new').focus()">
-              <input type="password" id="memo-pin-new" maxlength="8" placeholder="새 비밀번호" inputmode="numeric"
-                style="flex:1;padding:8px 12px;border-radius:10px;border:1.5px solid var(--border2);font-size:13px;background:var(--surface2);color:var(--txt);letter-spacing:4px;text-align:center"
-                onkeydown="if(event.key==='Enter') changeMemoPin()">
-              <button class="btn btn-primary" onclick="changeMemoPin()">변경</button>
-            </div>
-            <span id="memo-pin-msg" style="font-size:10px;font-weight:700;min-height:14px"></span>
-          </div>` : ''}
         </div>
       </div>
       <div style="text-align:center;font-size:10px;color:var(--txt3);margin-top:8px">vibe. v4.0.0</div>
@@ -6373,7 +6362,7 @@
 
         function submitMemoUnlock() {
             const input = document.getElementById('memo-unlock-input').value;
-            if (input === memoPin) {
+            if (input === lockPin) {
                 const id = document.getElementById('memo-unlock-modal').dataset.targetId;
                 document.getElementById('memo-unlock-modal').classList.remove('open');
                 _renderMemoView(id);
@@ -6384,14 +6373,6 @@
             }
         }
 
-        function changeMemoPin() {
-            const newPin = document.getElementById('memo-pin-new').value.trim();
-            if (!newPin) { showToast('비밀번호를 입력하세요', 'err'); return; }
-            memoPin = newPin;
-            save();
-            showToast('✅ 메모 비밀번호가 변경됐어요', 'ok');
-            renderSettings();
-        }
 
         function openMemoEdit(id) {
             const m = memos.find(x => x.id === id);
@@ -6783,19 +6764,23 @@
             if (el) el.textContent = isDark ? '라이트모드' : '다크모드';
         }
         function changePinFromSettings() {
-            const input = document.getElementById('pin-new');
+            const curInput = document.getElementById('pin-cur');
+            const newInput = document.getElementById('pin-new');
             const msg = document.getElementById('pin-msg');
-            if (!input) return;
-            const val = input.value.trim();
-            if (savePin(val)) {
-                msg.textContent = '✓ 변경 완료!';
-                msg.style.color = 'var(--acc)';
-                input.value = '';
-                setTimeout(() => { msg.textContent = ''; renderSettings(); }, 1500);
-            } else {
-                msg.textContent = '4자리 숫자만 가능';
-                msg.style.color = 'var(--danger)';
-            }
+            if (!curInput || !newInput) return;
+            const curVal = curInput.value.trim();
+            const newVal = newInput.value.trim();
+            if (!curVal) { msg.style.color = 'var(--danger)'; msg.textContent = '현재 비밀번호를 입력하세요'; return; }
+            if (curVal !== lockPin) { msg.style.color = 'var(--danger)'; msg.textContent = '현재 비밀번호가 올바르지 않습니다'; curInput.value = ''; curInput.focus(); return; }
+            if (!newVal) { msg.style.color = 'var(--danger)'; msg.textContent = '새 비밀번호를 입력하세요'; return; }
+            if (!/^\d{4}$/.test(newVal)) { msg.style.color = 'var(--danger)'; msg.textContent = '4자리 숫자만 가능합니다'; newInput.value = ''; return; }
+            lockPin = newVal;
+            localStorage.setItem('pne_pin', newVal);
+            msg.style.color = 'var(--acc)';
+            msg.textContent = '✓ 변경 완료!';
+            curInput.value = '';
+            newInput.value = '';
+            setTimeout(() => { msg.textContent = ''; renderSettings(); }, 1500);
         }
         function addQuickLink() {
             links.push({ name: '', url: 'https://', icon: '🔗' });
