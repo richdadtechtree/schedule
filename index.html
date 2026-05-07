@@ -4447,7 +4447,8 @@
                         content: m.content,
                         checklist: m.checklist,
                         color: m.color,
-                        category: m.category
+                        category: m.category,
+                        locked: !!m.locked
                     }));
                     dbMemos.forEach(m => {
                         if (m.checklist_items) {
