@@ -3345,6 +3345,17 @@
 
             .mobile-nav {
                 display: flex;
+                height: 70px;
+                padding: 4px 16px;
+                padding-bottom: calc(env(safe-area-inset-bottom) + 4px);
+            }
+
+            .mobile-nav-inner {
+                display: flex;
+                gap: 12px;
+                width: 100%;
+                height: 100%;
+                align-items: stretch;
             }
 
             .mobile-fab {
@@ -3533,22 +3544,20 @@
             .memo-card {
                 font-size: 13px; /* 가독성을 위해 폰트 크기 증가 */
             }
-
             .memo-cat-filter {
                 display: flex;
-                gap: 6px;
-                overflow-x: auto;
-                -webkit-overflow-scrolling: touch;
-                padding-bottom: 4px;
-                flex-wrap: nowrap;
-                scrollbar-width: none;
+                flex-direction: column;
+                gap: 8px;
+                overflow-x: visible;
                 margin-bottom: 14px;
             }
 
-            .memo-cat-filter::-webkit-scrollbar {
-                display: none;
+            .memo-cat-chip {
+                width: 100%;
+                justify-content: flex-start;
+                padding: 10px 16px;
+                border-radius: 12px;
             }
-
             /* Modals: full screen on mobile */
             .modal-box {
                 width: 100% !important;
@@ -4404,7 +4413,7 @@
 
                 const { data: dbSettings, error: settingsError } = await supabaseClient
                     .from('user_settings')
-                    .select('links, task_categories, memo_categories, pinned_memos')
+                    .select('links, task_categories, memo_categories, pinned_memos, memo_lock_enabled, lock_pin')
                     .eq('user_id', currentUser.id)
                     .maybeSingle();
 
@@ -4433,6 +4442,14 @@
                     if (Array.isArray(dbSettings.pinned_memos) && dbSettings.pinned_memos.length > 0) {
                         pinnedMemoIds = new Set(dbSettings.pinned_memos);
                         localStorage.setItem('pne_pinned_memos', JSON.stringify(dbSettings.pinned_memos));
+                    }
+                    if (dbSettings.memo_lock_enabled !== undefined && dbSettings.memo_lock_enabled !== null) {
+                        memoLockEnabled = dbSettings.memo_lock_enabled === true;
+                        localStorage.setItem('pne_memo_lock', String(memoLockEnabled));
+                    }
+                    if (dbSettings.lock_pin !== undefined && dbSettings.lock_pin !== null) {
+                        lockPin = dbSettings.lock_pin;
+                        localStorage.setItem('pne_pin', lockPin);
                     }
                 }
                 // DB에 카테고리가 없으면 현재 로컬 설정을 DB에 업로드 (첫 로그인 seed)
@@ -4597,6 +4614,8 @@
                         task_categories: catColors,
                         memo_categories: memoCats,
                         pinned_memos: [...pinnedMemoIds],
+                        memo_lock_enabled: memoLockEnabled,
+                        lock_pin: lockPin,
                         updated_at: new Date().toISOString()
                     }, { onConflict: 'user_id' });
                 if (error) {
@@ -5747,7 +5766,7 @@
           </div>
           <div style="display:flex;justify-content:space-between;align-items:center;padding-top:10px;border-top:0.5px solid var(--border2)">
             <div class="setting-info" style="margin-bottom:0"><h4>🔒 메모 잠금</h4><p>잠금된 메모는 위 비밀번호 없이 열 수 없습니다</p></div>
-            <button class="toggle${memoLockEnabled ? ' on' : ''}" onclick="memoLockEnabled=!memoLockEnabled;save();renderSettings();render()"></button>
+            <button class="toggle${memoLockEnabled ? ' on' : ''}" onclick="toggleMemoLockEnabled()"></button>
           </div>
         </div>
       </div>
@@ -6768,7 +6787,15 @@
             }
             lockPin = newPin;
             localStorage.setItem('pne_pin', newPin);
+            syncSettingsToSupabase();
             return true;
+        }
+        async function toggleMemoLockEnabled() {
+            memoLockEnabled = !memoLockEnabled;
+            save();
+            renderSettings();
+            render();
+            await syncSettingsToSupabase();
         }
         function toggleDark() {
             isDark = !isDark;
@@ -6796,6 +6823,7 @@
             if (!/^\d{4}$/.test(newVal)) { msg.style.color = 'var(--danger)'; msg.textContent = '4자리 숫자만 가능합니다'; newInput.value = ''; return; }
             lockPin = newVal;
             localStorage.setItem('pne_pin', newVal);
+            syncSettingsToSupabase();
             msg.style.color = 'var(--acc)';
             msg.textContent = '✓ 변경 완료!';
             curInput.value = '';
