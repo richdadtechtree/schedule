@@ -4510,7 +4510,7 @@
                         }
                     }
                     
-                    mergedMemos.sort((a, b) => b.id.localeCompare(a.id));
+                    mergedMemos.sort((a, b) => String(b.id).localeCompare(String(a.id)));
                     memos = mergedMemos;
                     
                     dbMemos.forEach(m => {
@@ -4579,7 +4579,7 @@
                         }
                     }
                     
-                    mergedTasks.sort((a, b) => b.id.localeCompare(a.id));
+                    mergedTasks.sort((a, b) => String(b.id).localeCompare(String(a.id)));
                     tasks = mergedTasks;
                     dataChanged = true;
                 }
