@@ -4462,43 +4462,130 @@
                     syncSettingsToSupabase();
                 }
 
+                let dataChanged = false;
+
                 if (dbMemos && dbMemos.length > 0) {
-                    memos = dbMemos.map(m => ({
-                        id: m.id,
-                        title: m.title,
-                        content: m.content,
-                        checklist: m.checklist,
-                        color: m.color,
-                        category: m.category,
-                        locked: !!m.locked
-                    }));
+                    const dbMemosMap = new Map(dbMemos.map(m => [m.id, m]));
+                    const mergedMemos = [];
+                    const localIdsProcessed = new Set();
+                    
+                    for (const localMemo of memos) {
+                        const dbMemo = dbMemosMap.get(localMemo.id);
+                        if (dbMemo) {
+                            if (localMemo.dirty) {
+                                mergedMemos.push(localMemo);
+                            } else {
+                                mergedMemos.push({
+                                    id: dbMemo.id,
+                                    title: dbMemo.title,
+                                    content: dbMemo.content,
+                                    checklist: dbMemo.checklist,
+                                    color: dbMemo.color,
+                                    category: dbMemo.category,
+                                    locked: !!dbMemo.locked,
+                                    dirty: false
+                                });
+                            }
+                            localIdsProcessed.add(localMemo.id);
+                        } else {
+                            if (localMemo.dirty) {
+                                mergedMemos.push(localMemo);
+                                localIdsProcessed.add(localMemo.id);
+                            }
+                        }
+                    }
+                    
+                    for (const dbMemo of dbMemos) {
+                        if (!localIdsProcessed.has(dbMemo.id)) {
+                            mergedMemos.push({
+                                id: dbMemo.id,
+                                title: dbMemo.title,
+                                content: dbMemo.content,
+                                checklist: dbMemo.checklist,
+                                color: dbMemo.color,
+                                category: dbMemo.category,
+                                locked: !!dbMemo.locked,
+                                dirty: false
+                            });
+                        }
+                    }
+                    
+                    mergedMemos.sort((a, b) => b.id.localeCompare(a.id));
+                    memos = mergedMemos;
+                    
                     dbMemos.forEach(m => {
                         if (m.checklist_items) {
                             checklistItems[m.id] = m.checklist_items;
                         }
                     });
+                    dataChanged = true;
                 }
 
                 if (dbTasks && dbTasks.length > 0) {
-                    tasks = dbTasks.map(t => ({
-                        id: t.id,
-                        title: t.title,
-                        desc: t.desc,
-                        category: t.category,
-                        priority: t.priority,
-                        date: t.date,
-                        time: t.time,
-                        completed: !!t.completed,
-                        repeat: t.repeat,
-                        weekDays: t.weekdays || [],
-                        status: t.status || '',
-                        updated_at: t.updated_at,
-                        ...(t.date_from ? { dateFrom: t.date_from, dateTo: t.date_to } : {})
-                    }));
+                    const dbTasksMap = new Map(dbTasks.map(t => [t.id, t]));
+                    const mergedTasks = [];
+                    const localIdsProcessed = new Set();
+                    
+                    for (const localTask of tasks) {
+                        const dbTask = dbTasksMap.get(localTask.id);
+                        if (dbTask) {
+                            if (localTask.dirty) {
+                                mergedTasks.push(localTask);
+                            } else {
+                                mergedTasks.push({
+                                    id: dbTask.id,
+                                    title: dbTask.title,
+                                    desc: dbTask.desc,
+                                    category: dbTask.category,
+                                    priority: dbTask.priority,
+                                    date: dbTask.date,
+                                    time: dbTask.time,
+                                    completed: !!dbTask.completed,
+                                    repeat: dbTask.repeat,
+                                    weekDays: dbTask.weekdays || [],
+                                    status: dbTask.status || '',
+                                    updated_at: dbTask.updated_at,
+                                    dirty: false,
+                                    ...(dbTask.date_from ? { dateFrom: dbTask.date_from, dateTo: dbTask.date_to } : {})
+                                });
+                            }
+                            localIdsProcessed.add(localTask.id);
+                        } else {
+                            if (localTask.dirty) {
+                                mergedTasks.push(localTask);
+                                localIdsProcessed.add(localTask.id);
+                            }
+                        }
+                    }
+                    
+                    for (const dbTask of dbTasks) {
+                        if (!localIdsProcessed.has(dbTask.id)) {
+                            mergedTasks.push({
+                                id: dbTask.id,
+                                title: dbTask.title,
+                                desc: dbTask.desc,
+                                category: dbTask.category,
+                                priority: dbTask.priority,
+                                date: dbTask.date,
+                                time: dbTask.time,
+                                completed: !!dbTask.completed,
+                                repeat: dbTask.repeat,
+                                weekDays: dbTask.weekdays || [],
+                                status: dbTask.status || '',
+                                updated_at: dbTask.updated_at,
+                                dirty: false,
+                                ...(dbTask.date_from ? { dateFrom: dbTask.date_from, dateTo: dbTask.date_to } : {})
+                            });
+                        }
+                    }
+                    
+                    mergedTasks.sort((a, b) => b.id.localeCompare(a.id));
+                    tasks = mergedTasks;
+                    dataChanged = true;
                 }
 
                 // 3. 변경된 데이터를 로컬에 저장하고 화면 갱신
-                if ((dbMemos && dbMemos.length > 0) || (dbTasks && dbTasks.length > 0)) {
+                if (dataChanged) {
                     save();
                     render();
                     showToast('클라우드 데이터와 동기화되었습니다.', 'ok');
@@ -4531,6 +4618,12 @@
                 if (error) {
                     console.error('Supabase upsert error:', error);
                     showToast('클라우드 저장 실패: ' + error.message, 'err');
+                } else {
+                    const m = memos.find(x => x.id === memo.id);
+                    if (m) {
+                        m.dirty = false;
+                        save();
+                    }
                 }
             } catch (e) {
                 console.error('Supabase save error:', e);
@@ -4568,6 +4661,11 @@
                     showToast('클라우드 일정 저장 실패: ' + error.message, 'err');
                 } else {
                     console.log('일정 클라우드 저장 완료!');
+                    const t = tasks.find(x => x.id === task.id);
+                    if (t) {
+                        t.dirty = false;
+                        save();
+                    }
                 }
             } catch (e) {
                 console.error('Supabase 일정 동기화 예외 발생:', e);
@@ -5403,6 +5501,7 @@
             const m = memos.find(x => x.id === id);
             if (m) {
                 m.category = newCat;
+                m.dirty = true;
                 save(); render();
                 await syncMemoToSupabase(m);
                 showToast(`메모가 ${newCat || '미분류'} 카테고리로 이동되었습니다.`, 'ok');
@@ -5413,6 +5512,7 @@
             const m = memos.find(x => x.id === memoId);
             if (!m) return;
             m.category = cat;
+            m.dirty = true;
             save(); render();
             await syncMemoToSupabase(m);
             showToast(`카테고리를 "${cat}"으로 변경했어요`, 'ok');
@@ -5785,12 +5885,13 @@
             if (!t) t = tasks.find(x => x.title === title && (x.date === idOrTitle || !idOrTitle));
             if (!t) return;
             t.completed = !t.completed;
+            t.dirty = true;
 
             // 반복 태스크 자동 복사
             if (t.completed && t.repeat && t.repeat !== 'none') {
                 const next = getNextRecurringDate(t.date, t.repeat, t.weekDays);
                 if (next) {
-                    const newTask = { ...t, id: Date.now() + '', date: next, completed: false };
+                    const newTask = { ...t, id: Date.now() + '', date: next, completed: false, dirty: true };
                     tasks.unshift(newTask);
                     await syncTaskToSupabase(newTask);
                     showToast('반복 일정이 다음으로 예약됐어요: ' + next, 'ok');
@@ -5825,18 +5926,19 @@
         async function duplicateTask(id) {
             const t = tasks.find(x => x.id === id);
             if (!t) return;
-            const copy = { ...t, id: Date.now() + '', title: t.title + ' (copy)', completed: false, status: '' };
+            const copy = { ...t, id: Date.now() + '', title: t.title + ' (copy)', completed: false, status: '', dirty: true };
             tasks.unshift(copy);
             save(); render();
             await syncTaskToSupabase(copy);
             showToast('태스크가 복사됐어요 📋', 'ok');
         }
-        function duplicateMemo(id) {
+        async function duplicateMemo(id) {
             const m = memos.find(x => x.id === id);
             if (!m) return;
-            const copy = { ...m, id: Date.now() + '', title: m.title + ' (copy)' };
+            const copy = { ...m, id: Date.now() + '', title: m.title + ' (copy)', dirty: true };
             memos.unshift(copy);
             save(); render();
+            await syncMemoToSupabase(copy);
             showToast('메모가 복사됐어요 📋', 'ok');
         }
 
@@ -5900,6 +6002,7 @@
                 t.status = ''; t.completed = true;
                 showToast('✅ 완료로 이동되었습니다.', 'ok');
             }
+            t.dirty = true;
             save(); render();
             await syncTaskToSupabase(t);
         }
@@ -5925,6 +6028,7 @@
                 t.priority = 'LOW';
                 showToast('⚪ 낮은 우선순위로 분류되었습니다.', 'ok');
             }
+            t.dirty = true;
             save(); render();
             await syncTaskToSupabase(t);
         }
@@ -5933,6 +6037,7 @@
             const t = tasks.find(x => x.id === id);
             if (!t) return;
             t.status = t.status === 'inprogress' ? '' : 'inprogress';
+            t.dirty = true;
             save(); render();
             await syncTaskToSupabase(t);
         }
@@ -5969,18 +6074,18 @@
                 await deleteTaskFromSupabase(id);
             } else if (contextDate === t.dateFrom) {
                 const newFrom = new Date(contextDate); newFrom.setDate(newFrom.getDate() + 1);
-                tasks[idx] = { ...t, dateFrom: formatDate(newFrom), date: formatDate(newFrom) };
+                tasks[idx] = { ...t, dateFrom: formatDate(newFrom), date: formatDate(newFrom), dirty: true };
                 await syncTaskToSupabase(tasks[idx]);
             } else if (contextDate === t.dateTo) {
                 const newTo = new Date(contextDate); newTo.setDate(newTo.getDate() - 1);
-                tasks[idx] = { ...t, dateTo: formatDate(newTo) };
+                tasks[idx] = { ...t, dateTo: formatDate(newTo), dirty: true };
                 await syncTaskToSupabase(tasks[idx]);
             } else {
                 // 중간: 앞뒤로 분리
                 const beforeTo = new Date(contextDate); beforeTo.setDate(beforeTo.getDate() - 1);
                 const afterFrom = new Date(contextDate); afterFrom.setDate(afterFrom.getDate() + 1);
-                tasks[idx] = { ...t, dateTo: formatDate(beforeTo) };
-                const split = { ...t, id: (Date.now() + Math.random()).toFixed(0), dateFrom: formatDate(afterFrom), date: formatDate(afterFrom) };
+                tasks[idx] = { ...t, dateTo: formatDate(beforeTo), dirty: true };
+                const split = { ...t, id: (Date.now() + Math.random()).toFixed(0), dateFrom: formatDate(afterFrom), date: formatDate(afterFrom), dirty: true };
                 tasks.splice(idx + 1, 0, split);
                 await syncTaskToSupabase(tasks[idx]);
                 await syncTaskToSupabase(split);
@@ -6235,14 +6340,14 @@
                 // 편집 모드
                 const idx = tasks.findIndex(t => t.id === editId);
                 if (idx >= 0) {
-                    tasks[idx] = { ...tasks[idx], ...commonFields };
+                    tasks[idx] = { ...tasks[idx], ...commonFields, dirty: true };
                     targetTask = tasks[idx];
                 }
                 editIdEl.value = '';
                 document.querySelector('#task-modal .modal-title').textContent = '✅ New Task';
             } else {
                 // 신규 추가
-                targetTask = { id: Date.now() + '', ...commonFields, completed: false };
+                targetTask = { id: Date.now() + '', ...commonFields, completed: false, dirty: true };
                 tasks.unshift(targetTask);
             }
             save();
@@ -6446,11 +6551,11 @@
             if (id) {
                 const idx = memos.findIndex(x => x.id === id);
                 if (idx >= 0) {
-                    memos[idx] = { ...memos[idx], title, content, checklist, color, category };
+                    memos[idx] = { ...memos[idx], title, content, checklist, color, category, dirty: true };
                     memoObj = memos[idx];
                 }
             } else {
-                memoObj = { id: Date.now() + '', title, content, checklist, color, category };
+                memoObj = { id: Date.now() + '', title, content, checklist, color, category, dirty: true };
                 memos.unshift(memoObj);
             }
             save();
@@ -7571,7 +7676,7 @@
         async function saveVoiceResult(text) {
             if (!text || !text.trim()) return;
             const cleanText = text.trim();
-            const memo = { id: Date.now() + '', title: cleanText, content: '', color: MEMO_COLORS[0] };
+            const memo = { id: Date.now() + '', title: cleanText, content: '', color: MEMO_COLORS[0], dirty: true };
             memos.unshift(memo);
             save(); render();
             await syncMemoToSupabase(memo);
