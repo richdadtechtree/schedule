@@ -4307,6 +4307,144 @@
     </div>
 
     <script>
+        // ===================== SYSTEM LOGGING & DIAGNOSTICS =====================
+        const originalLog = console.log;
+        const originalError = console.error;
+        const originalWarn = console.warn;
+        window.appLogs = [];
+
+        function pushToAppLogs(type, args) {
+            const timestamp = new Date().toLocaleTimeString();
+            const msg = args.map(arg => {
+                if (arg instanceof Error) return arg.stack || arg.message;
+                return typeof arg === 'object' ? JSON.stringify(arg) : arg;
+            }).join(' ');
+            const logEntry = { time: timestamp, type, msg };
+            window.appLogs.push(logEntry);
+            if (window.appLogs.length > 250) window.appLogs.shift();
+            
+            const consoleEl = document.getElementById('log-console');
+            if (consoleEl) {
+                const colorMap = { LOG: '#38bdf8', ERROR: '#f43f5e', WARN: '#fbbf24', DIAG: '#c084fc' };
+                const color = colorMap[type] || '#f8fafc';
+                const line = document.createElement('div');
+                line.style.color = color;
+                line.style.marginBottom = '3px';
+                line.style.fontSize = '10px';
+                line.textContent = `[${timestamp}] [${type}] ${msg}`;
+                consoleEl.appendChild(line);
+                consoleEl.scrollTop = consoleEl.scrollHeight;
+            }
+        }
+
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            pushToAppLogs('LOG', args);
+        };
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            pushToAppLogs('ERROR', args);
+        };
+        console.warn = function(...args) {
+            originalWarn.apply(console, args);
+            pushToAppLogs('WARN', args);
+        };
+
+        function updateDiagUI() {
+            const diagEmail = document.getElementById('diag-email');
+            const diagSupabase = document.getElementById('diag-supabase');
+            const diagLocalCount = document.getElementById('diag-local-count');
+            const consoleEl = document.getElementById('log-console');
+
+            if (diagEmail) {
+                diagEmail.textContent = currentUser ? currentUser.email : '로그인 없음';
+                diagEmail.style.color = currentUser ? 'var(--p)' : 'var(--danger)';
+            }
+            if (diagSupabase) {
+                if (!supabaseClient) {
+                    diagSupabase.textContent = '클라이언트 에러';
+                    diagSupabase.style.color = 'var(--danger)';
+                } else if (!currentUser) {
+                    diagSupabase.textContent = '로그인 필요';
+                    diagSupabase.style.color = 'var(--warn)';
+                } else {
+                    diagSupabase.textContent = '연결됨';
+                    diagSupabase.style.color = 'var(--success)';
+                }
+            }
+            if (diagLocalCount) {
+                diagLocalCount.textContent = `메모 ${memos.length} / 일정 ${tasks.length}`;
+            }
+
+            if (consoleEl) {
+                consoleEl.innerHTML = '';
+                window.appLogs.forEach(log => {
+                    const colorMap = { LOG: '#38bdf8', ERROR: '#f43f5e', WARN: '#fbbf24', DIAG: '#c084fc' };
+                    const color = colorMap[log.type] || '#f8fafc';
+                    const line = document.createElement('div');
+                    line.style.color = color;
+                    line.style.marginBottom = '3px';
+                    line.style.fontSize = '10px';
+                    line.textContent = `[${log.time}] [${log.type}] ${log.msg}`;
+                    consoleEl.appendChild(line);
+                });
+                consoleEl.scrollTop = consoleEl.scrollHeight;
+            }
+        }
+
+        async function runDiagnostics() {
+            console.log('--- [진단] 연결 확인 및 즉시 동기화 시도 ---');
+            console.log('기기 환경:', navigator.userAgent);
+            console.log('네트워크 연결:', navigator.onLine ? '온라인 상태' : '오프라인 상태');
+            
+            if (currentUser) {
+                console.log(`[진단] 로그인 메일: ${currentUser.email}`);
+                console.log(`[진단] 고유 유저 ID: ${currentUser.id}`);
+            } else {
+                console.warn('[진단] 경고: 로그인이 되어있지 않습니다! 로그인을 하셔야 모바일과 PC가 동기화됩니다.');
+            }
+
+            if (supabaseClient) {
+                console.log('[진단] DB 클라이언트: 설정 완료');
+                try {
+                    const startTime = performance.now();
+                    const { data, error } = await supabaseClient.from('memos').select('id').limit(1);
+                    const duration = Math.round(performance.now() - startTime);
+                    if (error) {
+                        console.error('[진단] DB 연결 오류:', error.message);
+                    } else {
+                        console.log(`[진단] DB 연결 테스트 성공! 응답 시간: ${duration}ms`);
+                    }
+                } catch (e) {
+                    console.error('[진단] DB 테스트 예외 발생:', e.message || e);
+                }
+            } else {
+                console.error('[진단] DB 클라이언트가 생성되지 않았습니다.');
+            }
+
+            console.log(`[진단] 로컬 저장 메모 개수: ${memos.length}개`);
+            console.log(`[진단] 로컬 저장 일정 개수: ${tasks.length}개`);
+            
+            console.log('[진단] 최신 데이터 서버에서 가져오는 중...');
+            await syncFromSupabase();
+            updateDiagUI();
+        }
+
+        function clearSystemLogs() {
+            window.appLogs = [];
+            updateDiagUI();
+            console.log('로그 기록이 비워졌습니다.');
+        }
+
+        function copySystemLogs() {
+            const logText = window.appLogs.map(log => `[${log.time}] [${log.type}] ${log.msg}`).join('\n');
+            navigator.clipboard.writeText(logText).then(() => {
+                showToast('📋 로그가 클립보드에 복사되었습니다.', 'ok');
+            }).catch(err => {
+                showToast('로그 복사 실패: ' + err, 'err');
+            });
+        }
+
         // ===================== SUPABASE CONFIG =====================
         const SUPABASE_URL = 'https://phdyeiznernpuywsfcme.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBoZHllaXpuZXJucHV5d3NmY21lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0NDE3NDcsImV4cCI6MjA5MzAxNzc0N30.3LGBxJkj_J6zWAM9XJ1rx6i-OKZX82FiMjLAjP3H_Ro';
@@ -5875,8 +6013,45 @@
           </div>
         </div>
       </div>
+
+      <!-- 🩺 시스템 진단 및 로그 콘솔 -->
+      <div class="setting-card animate animate-d3" style="animation-delay:.3s">
+        <div class="setting-info" style="margin-bottom:12px">
+          <h4 style="display:flex;align-items:center;gap:6px">🩺 시스템 진단 및 동기화 로그 <span class="badge-pill" style="background:rgba(99,102,241,.15);color:var(--p);font-size:9px">실시간</span></h4>
+          <p>모바일과 PC 간의 로그인 계정 일치 여부 및 동기화 오류 로그를 진단합니다.</p>
+        </div>
+        
+        <!-- 실시간 상태 대시보드 -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(130px, 1fr));gap:8px;margin-bottom:12px">
+          <div style="background:var(--surface2);padding:10px;border-radius:10px;border:1px solid var(--border2);text-align:center">
+            <div style="font-size:10px;color:var(--txt3)">로그인 계정</div>
+            <div id="diag-email" style="font-size:11px;font-weight:700;color:var(--p);word-break:break-all;margin-top:4px">-</div>
+          </div>
+          <div style="background:var(--surface2);padding:10px;border-radius:10px;border:1px solid var(--border2);text-align:center">
+            <div style="font-size:10px;color:var(--txt3)">클라우드 연결</div>
+            <div id="diag-supabase" style="font-size:11px;font-weight:700;color:var(--success);margin-top:4px">-</div>
+          </div>
+          <div style="background:var(--surface2);padding:10px;border-radius:10px;border:1px solid var(--border2);text-align:center">
+            <div style="font-size:10px;color:var(--txt3)">로컬 데이터 통계</div>
+            <div id="diag-local-count" style="font-size:11px;font-weight:700;color:var(--txt);margin-top:4px">-</div>
+          </div>
+        </div>
+
+        <!-- 로그 출력 콘솔 -->
+        <div id="log-console" style="background:#0f172a;color:#f8fafc;font-family:'Courier New',Courier,monospace;font-size:10px;padding:12px;border-radius:10px;height:180px;overflow-y:auto;line-height:1.5;margin-bottom:12px;border:1px solid #1e293b;white-space:pre-wrap;word-break:break-all;text-align:left">
+          <!-- Logs will be rendered here dynamically -->
+        </div>
+
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn btn-ghost" onclick="clearSystemLogs()" style="font-size:11px;padding:8px 12px;flex:1;justify-content:center">로그 비우기</button>
+          <button class="btn btn-ghost" onclick="copySystemLogs()" style="font-size:11px;padding:8px 12px;flex:1;justify-content:center">📋 로그 복사</button>
+          <button class="btn btn-primary" onclick="runDiagnostics()" style="font-size:11px;padding:8px 12px;flex:1.5;justify-content:center;background:linear-gradient(135deg,var(--p),var(--p-glow))">🔄 연결 진단 및 즉시 동기화</button>
+        </div>
+      </div>
+
       <div style="text-align:center;font-size:10px;color:var(--txt3);margin-top:8px">vibe. v4.0.0</div>
     </div>`;
+            setTimeout(updateDiagUI, 50);
         }
 
         // ===================== TASK ACTIONS =====================
