@@ -4623,7 +4623,7 @@
                     syncSettingsToSupabase();
                 }
 
-                let dataChanged = false;
+                dataChanged = false;
 
                 if (dbMemos && dbMemos.length > 0) {
                     const dbMemosMap = new Map(dbMemos.map(m => [m.id, m]));
