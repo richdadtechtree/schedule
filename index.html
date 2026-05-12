@@ -5916,7 +5916,10 @@
       <div class="setting-card animate" style="background:var(--surface2); border:1.5px solid var(--border2); margin-bottom:14px">
         <div class="setting-row" style="flex-wrap:wrap; gap:12px; align-items:center">
           <div class="setting-info" style="flex:1; min-width:200px">
-            <h4 style="font-size:12px; color:var(--txt2); text-transform:uppercase; letter-spacing:0.5px">👤 구글 연동 상태</h4>
+            <h4 style="font-size:12px; color:var(--txt2); text-transform:uppercase; letter-spacing:0.5px; display:flex; justify-content:space-between; align-items:center">
+              <span>👤 구글 연동 상태</span>
+              <span style="font-size:8px; color:var(--txt3); font-weight:normal; text-transform:none">Build: 18:10_ChecklistFix</span>
+            </h4>
             <div style="display:flex; align-items:center; gap:8px; margin-top:6px">
               ${currentUser ? `
                 <img src="${currentUser.user_metadata?.avatar_url || ''}" alt="avatar" style="width:28px; height:28px; border-radius:50%; border:1px solid var(--border2)" onerror="this.src='https://ui-avatars.com/api/?name='+encodeURIComponent(currentUser.email)">
