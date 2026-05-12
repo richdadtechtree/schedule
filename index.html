@@ -4551,7 +4551,7 @@
 
                 const { data: dbSettings, error: settingsError } = await supabaseClient
                     .from('user_settings')
-                    .select('links, task_categories, memo_categories, pinned_memos, memo_lock_enabled, lock_pin')
+                    .select('links, task_categories, memo_categories, pinned_memos, memo_lock_enabled, lock_pin, categories_updated_at')
                     .eq('user_id', currentUser.id)
                     .maybeSingle();
 
@@ -4562,22 +4562,39 @@
                 // 2. 서버에 데이터가 있다면 로컬 데이터를 서버 데이터로 교체 (Single Source of Truth)
                 let hasDbCategories = false;
                 let needsSettingsSync = false;
+                let dataChanged = false;
+
                 if (dbSettings && !settingsError) {
                     if (dbSettings.links && dbSettings.links.length > 0) {
                         links = dbSettings.links;
                         if (typeof renderQuickLinks === 'function') renderQuickLinks();
                     }
-                    if (dbSettings.task_categories && Object.keys(dbSettings.task_categories).length > 0) {
-                        catColors = dbSettings.task_categories;
-                        localStorage.setItem('pne_cats', JSON.stringify(catColors));
-                        if (typeof renderCategorySelects === 'function') renderCategorySelects();
+                    
+                    // 카테고리 동기화 타임스탬프 기반 병합
+                    const serverCatUpdatedAt = dbSettings.categories_updated_at || new Date(0).toISOString();
+                    const serverHasCats = (dbSettings.task_categories && Object.keys(dbSettings.task_categories).length > 0) || 
+                                          (dbSettings.memo_categories && Object.keys(dbSettings.memo_categories).length > 0);
+
+                    if (serverHasCats && new Date(serverCatUpdatedAt) >= new Date(localCatUpdatedAt)) {
+                        console.log('[동기화] 서버 카테고리가 최신이거나 동일하여 로컬 설정을 업데이트합니다.', serverCatUpdatedAt);
+                        if (dbSettings.task_categories) {
+                            catColors = dbSettings.task_categories;
+                            localStorage.setItem('pne_cats', JSON.stringify(catColors));
+                            if (typeof renderCategorySelects === 'function') renderCategorySelects();
+                        }
+                        if (dbSettings.memo_categories) {
+                            memoCats = dbSettings.memo_categories;
+                            localStorage.setItem('pne_memo_cats', JSON.stringify(memoCats));
+                        }
+                        localCatUpdatedAt = serverCatUpdatedAt;
+                        localStorage.setItem('pne_cat_updated_at', localCatUpdatedAt);
                         hasDbCategories = true;
+                        dataChanged = true; // 카테고리 변경 시 화면 렌더링 갱신
+                    } else {
+                        console.log('[동기화] 로컬 카테고리가 서버보다 최신이거나 서버에 카테고리가 없습니다. 업로드 대기.');
+                        needsSettingsSync = true;
                     }
-                    if (dbSettings.memo_categories && Object.keys(dbSettings.memo_categories).length > 0) {
-                        memoCats = dbSettings.memo_categories;
-                        localStorage.setItem('pne_memo_cats', JSON.stringify(memoCats));
-                        hasDbCategories = true;
-                    }
+
                     if (Array.isArray(dbSettings.pinned_memos) && dbSettings.pinned_memos.length > 0) {
                         pinnedMemoIds = new Set(dbSettings.pinned_memos);
                         localStorage.setItem('pne_pinned_memos', JSON.stringify(dbSettings.pinned_memos));
@@ -4857,6 +4874,7 @@
                         pinned_memos: [...pinnedMemoIds],
                         memo_lock_enabled: memoLockEnabled,
                         lock_pin: lockPin,
+                        categories_updated_at: localCatUpdatedAt,
                         updated_at: new Date().toISOString()
                     }, { onConflict: 'user_id' });
                 if (error) {
@@ -4949,6 +4967,7 @@
         let catColors = JSON.parse(localStorage.getItem('pne_cats') || JSON.stringify(DEFAULT_CATS));
         const DEFAULT_MEMO_CATS = { '📁 일반': '#8b5cf6', '💡 아이디어': '#f59e0b', '📖 학습': '#10b981', '🔖 참고': '#3b82f6' };
         let memoCats = JSON.parse(localStorage.getItem('pne_memo_cats') || JSON.stringify(DEFAULT_MEMO_CATS));
+        let localCatUpdatedAt = localStorage.getItem('pne_cat_updated_at') || new Date(0).toISOString();
         let pinnedMemoIds = new Set(JSON.parse(localStorage.getItem('pne_pinned_memos') || '[]'));
         const MEMO_COLORS = ['#fffde7', '#e8f5e9', '#e3f2fd', '#fce4ec', '#f3e5f5', '#e0f7fa'];
         const MEMO_PALETTE = [
@@ -4981,7 +5000,15 @@
             localStorage.setItem('pne_pinned_memos', JSON.stringify([...pinnedMemoIds]));
             localStorage.setItem('pne_weather_loc', weatherLoc);
             localStorage.setItem('pne_memo_lock', String(memoLockEnabled));
+            localStorage.setItem('pne_cat_updated_at', localCatUpdatedAt);
             scheduleNotifications();
+        }
+        function markCatsUpdated() {
+            localCatUpdatedAt = new Date().toISOString();
+            save();
+            render();
+            if (currentView === 'settings') renderSettings();
+            syncSettingsToSupabase();
         }
         function togglePinMemo(id) {
             if (pinnedMemoIds.has(id)) {
@@ -5663,8 +5690,7 @@
             if (memoCats[n]) { showToast('이미 존재하는 카테고리입니다.', 'err'); return; }
             const colors = ['#6366f1', '#f59e0b', '#10b981', '#3b82f6', '#ec4899', '#8b5cf6', '#06b6d4', '#ef4444'];
             memoCats[n] = colors[Object.keys(memoCats).length % colors.length];
-            save(); render();
-            await syncSettingsToSupabase();
+            markCatsUpdated();
             showToast(`"${n}" 카테고리가 추가됐어요! 🎉`, 'ok');
         }
         async function editMemoCat(oldName) {
@@ -5680,8 +5706,7 @@
             // 해당 카테고리를 사용하는 메모 업데이트
             memos.forEach(m => { if (m.category === oldName) m.category = n; });
             if (memoCategoryFilter === oldName) memoCategoryFilter = n;
-            save(); render();
-            await syncSettingsToSupabase();
+            markCatsUpdated();
             // 메모들도 개별적으로 업데이트 필요할 수 있음 (또는 전체 sync)
             showToast(`"${oldName}" → "${n}" 이름이 변경됐어요.`, 'ok');
         }
@@ -5694,8 +5719,7 @@
             delete memoCats[name];
             memos.forEach(m => { if (m.category === name) m.category = ''; });
             if (memoCategoryFilter === name) memoCategoryFilter = 'ALL';
-            save(); render();
-            await syncSettingsToSupabase();
+            markCatsUpdated();
             showToast(`"${name}" 카테고리가 삭제됐어요.`, 'ok');
         }
 
@@ -5944,13 +5968,13 @@
         <div class="setting-info" style="margin-bottom:10px"><h4>카테고리 관리</h4><p>태스크 카테고리와 색상을 편집합니다</p></div>
         <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
           ${Object.keys(catColors).map(cat => `<div style="display:flex;gap:6px;align-items:center">
-            <input type="color" value="${catColors[cat]}" style="width:30px;height:30px;padding:2px;border-radius:4px;border:1px solid var(--border2);background:none;cursor:pointer" onchange="catColors['${cat}']=this.value;save();render();renderSettings();syncSettingsToSupabase()">
-            <input value="${cat}" placeholder="이름" style="flex:1" onchange="const n=this.value.trim(); if(n && n!=='${cat}'){ catColors[n]=catColors['${cat}']; delete catColors['${cat}']; tasks.forEach(t=> {if(t.category==='${cat}') t.category=n;}); save(); render(); renderSettings(); renderCategorySelects(); syncSettingsToSupabase(); }">
-            <button class="icon-btn" onclick="if(confirm('이 카테고리를 삭제할까요?')){ delete catColors['${cat}']; save(); render(); renderSettings(); renderCategorySelects(); syncSettingsToSupabase(); }" title="삭제">✕</button>
+            <input type="color" value="${catColors[cat]}" style="width:30px;height:30px;padding:2px;border-radius:4px;border:1px solid var(--border2);background:none;cursor:pointer" onchange="catColors['${cat}']=this.value;markCatsUpdated()">
+            <input value="${cat}" placeholder="이름" style="flex:1" onchange="const n=this.value.trim(); if(n && n!=='${cat}'){ catColors[n]=catColors['${cat}']; delete catColors['${cat}']; tasks.forEach(t=> {if(t.category==='${cat}') t.category=n;}); renderCategorySelects(); markCatsUpdated(); }">
+            <button class="icon-btn" onclick="if(confirm('이 카테고리를 삭제할까요?')){ delete catColors['${cat}']; renderCategorySelects(); markCatsUpdated(); }" title="삭제">✕</button>
           </div>`).join('')}
         </div>
         <div style="display:flex;gap:8px;margin-top:4px">
-          <button class="btn btn-ghost" onclick="const n='새 카테고리_'+Date.now().toString().slice(-4); catColors[n]='#6366f1'; save(); render(); renderSettings(); renderCategorySelects(); syncSettingsToSupabase()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> 추가</button>
+          <button class="btn btn-ghost" onclick="const n='새 카테고리_'+Date.now().toString().slice(-4); catColors[n]='#6366f1'; renderCategorySelects(); markCatsUpdated()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> 추가</button>
           <button class="btn btn-ghost" onclick="syncSettingsToSupabase().then(ok=>showToast(ok?'☁ 카테고리가 클라우드에 저장됐습니다':'저장 실패 (로그인 확인)', ok?'ok':'err'))" title="현재 카테고리를 DB에 강제 저장">☁ 지금 저장</button>
         </div>
       </div>
@@ -7190,7 +7214,7 @@
                             memoCats = data.memoCats || memoCats;
                             checklistItems = data.checklistItems || checklistItems;
                             weatherLoc = data.weatherLoc || weatherLoc;
-                            syncSettingsToSupabase();
+                            markCatsUpdated();
                             showToast('데이터가 복구되었습니다 🔄', 'ok');
                         }
                     }
