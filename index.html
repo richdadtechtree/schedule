@@ -4778,11 +4778,11 @@
                     .upsert({
                         id: memo.id,
                         user_id: currentUser.id,
-                        title: memo.title,
-                        content: memo.content,
-                        checklist: memo.checklist,
-                        color: memo.color,
-                        category: memo.category,
+                        title: memo.title || '',
+                        content: memo.content || '',
+                        checklist: memo.checklist || '',
+                        color: memo.color || MEMO_COLORS[0],
+                        category: memo.category || null,
                         locked: !!memo.locked,
                         checklist_items: checklistItems[memo.id] || [],
                         updated_at: new Date().toISOString()
