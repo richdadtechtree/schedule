@@ -4782,7 +4782,7 @@
                         content: memo.content || '',
                         checklist: memo.checklist || '',
                         color: memo.color || MEMO_COLORS[0],
-                        category: memo.category || null,
+                        category: memo.category || '',
                         locked: !!memo.locked,
                         checklist_items: checklistItems[memo.id] || [],
                         updated_at: new Date().toISOString()
@@ -5918,7 +5918,7 @@
           <div class="setting-info" style="flex:1; min-width:200px">
             <h4 style="font-size:12px; color:var(--txt2); text-transform:uppercase; letter-spacing:0.5px; display:flex; justify-content:space-between; align-items:center">
               <span>👤 구글 연동 상태</span>
-              <span style="font-size:8px; color:var(--txt3); font-weight:normal; text-transform:none">Build: 18:10_ChecklistFix</span>
+              <span style="font-size:8px; color:var(--txt3); font-weight:normal; text-transform:none">Build: 18:15_CategoryFix</span>
             </h4>
             <div style="display:flex; align-items:center; gap:8px; margin-top:6px">
               ${currentUser ? `
