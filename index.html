@@ -4506,6 +4506,17 @@
         }
 
         async function handleSignOut() {
+            const unsyncedMemos = memos.filter(m => m.dirty).length;
+            const unsyncedTasks = tasks.filter(t => t.dirty).length;
+            
+            if (unsyncedMemos > 0 || unsyncedTasks > 0) {
+                const total = unsyncedMemos + unsyncedTasks;
+                const msg = `⚠️ 아직 클라우드에 저장되지 않은 '기기 전용' 데이터가 ${total}개 존재합니다.\n(음성/일반 메모: ${unsyncedMemos}개, 일정: ${unsyncedTasks}개)\n\n지금 로그아웃하시면 동기화되지 않은 데이터는 모두 영구 삭제되어 복구할 수 없습니다.\n정말 로그아웃하시겠습니까?`;
+                if (!confirm(msg)) {
+                    return; // 로그아웃 중단
+                }
+            }
+
             const { error } = await supabaseClient.auth.signOut();
             if (error) showToast('로그아웃 실패: ' + error.message, 'err');
         }
