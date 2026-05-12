@@ -4480,6 +4480,11 @@
 
         async function handleSignIn() {
             try {
+                if (window.location.protocol === 'file:') {
+                    alert('⚠️ 구글 로그인은 로컬 파일(file://...) 모드에서는 작동하지 않습니다!\n\n구글 로그인 정책상 보안을 위해 http:// 나 https:// 로 연결된 로컬 주소(http://localhost 등)만 로그인 콜백을 수락합니다.\n\n[해결 방법]\nVS Code의 Live Server 플러그인을 사용하여 앱을 열거나, 터미널에서 아래 명령을 실행한 뒤 http://localhost:5500 으로 접속해 주세요:\n\n👉 python3 -m http.server 5500');
+                    showToast('로컬 파일 모드에서는 구글 로그인을 실행할 수 없습니다.', 'err');
+                    return;
+                }
                 const redirectUrl = window.location.origin + window.location.pathname;
                 console.log('Attempting login with redirectUrl:', redirectUrl);
 
@@ -4495,6 +4500,7 @@
                 if (error) throw error;
             } catch (error) {
                 console.error('Login error:', error);
+                alert('❌ 구글 로그인 시도 중 에러가 발생했습니다:\n' + error.message + '\n\n인터넷 연결 상태 및 Supabase 설정을 확인해 주세요.');
                 showToast('로그인 실패: ' + error.message, 'err');
             }
         }
