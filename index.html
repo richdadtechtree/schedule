@@ -1513,11 +1513,11 @@
             border-radius: var(--radius);
             box-shadow: var(--shadow);
             cursor: pointer;
-            transition: all .4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transition: transform .18s ease, box-shadow .18s ease;
             position: relative;
             min-height: 100px;
             border: 1px solid rgba(255, 255, 255, 0.2);
-            backdrop-filter: blur(8px);
+            will-change: transform;
         }
 
         [data-dark] .memo-card {
@@ -1529,7 +1529,6 @@
             width: 90%;
             max-width: 700px;
             background: var(--surface);
-            backdrop-filter: var(--glass);
             border-radius: 28px;
             padding: 40px;
             box-shadow: var(--shadow-lg);
@@ -1537,7 +1536,9 @@
             position: relative;
             max-height: 85vh;
             overflow-y: auto;
-            animation: modal-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain;
+            animation: modal-pop 0.25s ease-out;
         }
 
         .mv-header {
@@ -2275,8 +2276,7 @@
             z-index: 1000;
             align-items: center;
             justify-content: center;
-            backdrop-filter: blur(12px);
-            transition: all .4s;
+            backdrop-filter: blur(8px);
         }
 
         .modal-overlay.open {
@@ -2293,7 +2293,7 @@
             position: relative;
             box-shadow: var(--shadow-lg);
             border: 1px solid var(--border);
-            animation: modalIn .4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            animation: modalIn .22s ease-out;
         }
 
         @keyframes modalIn {
@@ -6222,10 +6222,16 @@
             e.target.classList.remove('dragging');
             draggedTaskId = null;
         }
+        let _dragOverRaf = null;
         function onDragOver(e) {
             e.preventDefault();
             e.dataTransfer.dropEffect = 'move';
-            e.currentTarget.classList.add('drag-over');
+            const target = e.currentTarget;
+            if (_dragOverRaf) return;
+            _dragOverRaf = requestAnimationFrame(() => {
+                target.classList.add('drag-over');
+                _dragOverRaf = null;
+            });
         }
         function onDragLeave(e) {
             const rect = e.currentTarget.getBoundingClientRect();
