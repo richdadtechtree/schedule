@@ -70,6 +70,188 @@
             transition: background .3s, color .3s
         }
 
+        /* ===================== QUOTE POPUP ===================== */
+        .quote-popup-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.55);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            animation: fadeIn .35s ease;
+        }
+        .quote-popup-box {
+            background: var(--surface);
+            border: 1.5px solid var(--p);
+            border-radius: 28px;
+            max-width: 520px;
+            width: 100%;
+            padding: 44px 40px 36px;
+            box-shadow: 0 0 80px -20px var(--p-glow), 0 32px 64px -20px rgba(0,0,0,0.25);
+            position: relative;
+            text-align: center;
+            animation: slideUp .4s cubic-bezier(.16,1,.3,1);
+        }
+        @keyframes slideUp {
+            from { opacity:0; transform:translateY(32px) scale(.96); }
+            to   { opacity:1; transform:translateY(0) scale(1); }
+        }
+        .quote-popup-cat {
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: var(--p);
+            margin-bottom: 20px;
+            opacity: .8;
+        }
+        .quote-popup-icon {
+            font-size: 34px;
+            margin-bottom: 18px;
+            line-height: 1;
+        }
+        .quote-popup-text {
+            font-family: 'Pretendard', sans-serif;
+            font-size: 22px;
+            font-weight: 700;
+            line-height: 1.65;
+            color: var(--txt);
+            letter-spacing: -0.3px;
+            margin-bottom: 14px;
+        }
+        .quote-popup-author {
+            font-size: 12px;
+            color: var(--txt3);
+            font-weight: 600;
+            margin-bottom: 28px;
+        }
+        .quote-popup-close {
+            background: linear-gradient(135deg, var(--p), var(--p2));
+            color: #fff;
+            border: none;
+            border-radius: 50px;
+            padding: 11px 36px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            letter-spacing: 0.3px;
+            transition: opacity .15s;
+        }
+        .quote-popup-close:hover { opacity: .85; }
+        .quote-popup-x {
+            position: absolute;
+            top: 16px;
+            right: 18px;
+            background: none;
+            border: none;
+            font-size: 20px;
+            color: var(--txt3);
+            cursor: pointer;
+            line-height: 1;
+            padding: 4px 8px;
+            border-radius: 8px;
+            transition: background .15s;
+        }
+        .quote-popup-x:hover { background: var(--border2); }
+
+        /* ===================== QUOTES VIEW ===================== */
+        .quotes-wrap {
+            padding: 0 0 40px;
+            max-width: 860px;
+            margin: 0 auto;
+        }
+        .quotes-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .quotes-cat-tabs {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .quotes-cat-tab {
+            padding: 5px 14px;
+            border-radius: 50px;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+            border: 1.5px solid var(--border);
+            background: var(--surface2);
+            color: var(--txt2);
+            transition: all .15s;
+        }
+        .quotes-cat-tab.active {
+            background: linear-gradient(135deg, var(--p), var(--p2));
+            color: #fff;
+            border-color: transparent;
+        }
+        .quotes-cat-tab:hover:not(.active) { border-color: var(--p); color: var(--p); }
+        .quote-card {
+            background: var(--surface);
+            border: 1px solid var(--border2);
+            border-radius: 16px;
+            padding: 16px 18px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            transition: box-shadow .2s, border-color .2s;
+        }
+        .quote-card:hover { box-shadow: var(--shadow); border-color: var(--border); }
+        .quote-card-check {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--p);
+            margin-top: 2px;
+            flex-shrink: 0;
+            cursor: pointer;
+        }
+        .quote-card-body { flex: 1; min-width: 0; }
+        .quote-card-text {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--txt);
+            line-height: 1.6;
+            margin-bottom: 4px;
+        }
+        .quote-card-author {
+            font-size: 11px;
+            color: var(--txt3);
+            font-weight: 600;
+        }
+        .quote-card-actions {
+            display: flex;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+        .quote-act-btn {
+            background: none;
+            border: none;
+            padding: 5px 7px;
+            border-radius: 8px;
+            cursor: pointer;
+            color: var(--txt3);
+            font-size: 13px;
+            transition: background .15s, color .15s;
+        }
+        .quote-act-btn:hover { background: var(--border2); color: var(--txt); }
+        .quotes-empty {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--txt3);
+        }
+        .quotes-empty-icon { font-size: 40px; margin-bottom: 12px; }
+        .quotes-empty-txt { font-size: 13px; font-weight: 600; }
+
         /* BRIEFING MODAL */
         .briefing-modal {
             max-width: 480px !important;
@@ -3859,6 +4041,11 @@
                     <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
                     <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
                 </svg> 강의 진도</div>
+            <div class="nav-item" onclick="switchView('quotes')"><svg width="14" height="14" viewBox="0 0 24 24"
+                    fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"/>
+                    <path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z"/>
+                </svg> 명언</div>
             <div class="nav-item" onclick="switchView('settings')"><svg width="14" height="14" viewBox="0 0 24 24"
                     fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="12" cy="12" r="3" />
@@ -4081,6 +4268,7 @@
             <div id="v-analytics" class="view"></div>
 
             <div id="v-lecture" class="view"></div>
+            <div id="v-quotes" class="view"></div>
             <div id="v-settings" class="view"></div>
         </div>
     </div>
@@ -4222,6 +4410,32 @@
     </div>
 
     <!-- MEMO MODAL -->
+    <!-- QUOTE MODAL -->
+    <div class="modal-overlay" id="quote-modal">
+        <div class="modal-box" style="max-width:460px">
+            <button class="modal-close" onclick="closeQuoteModal()" aria-label="닫기">✕</button>
+            <div class="modal-title" id="qm-title">💬 명언 추가</div>
+            <div class="form-grid">
+                <div class="form-row">
+                    <label class="form-label">카테고리</label>
+                    <select id="qm-cat" class="form-input" style="padding:8px 12px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface);color:var(--txt);font-size:12px;width:100%"></select>
+                </div>
+                <div class="form-row">
+                    <label class="form-label">명언 내용 <span style="color:var(--danger)">*</span></label>
+                    <textarea id="qm-text" class="form-input" rows="4" placeholder="명언을 입력하세요..." style="resize:vertical;min-height:90px"></textarea>
+                </div>
+                <div class="form-row">
+                    <label class="form-label">저자 (선택)</label>
+                    <input id="qm-author" type="text" class="form-input" placeholder="예: 스티브 잡스">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" onclick="closeQuoteModal()">취소</button>
+                <button class="btn btn-primary" onclick="saveQuoteFromModal()">저장</button>
+            </div>
+        </div>
+    </div>
+
     <div class="modal-overlay" id="memo-modal">
         <div class="modal-box">
             <button class="modal-close" onclick="closeModals()" aria-label="닫기">✕</button>
@@ -4919,6 +5133,13 @@
         // ===================== STATE =====================
         let tasks = JSON.parse(localStorage.getItem('pne_tasks') || '[]');
         let memos = JSON.parse(localStorage.getItem('pne_memos') || '[]');
+        let quoteCategories = JSON.parse(localStorage.getItem('pne_quote_cats') || '["동기부여","지혜","성공","삶"]');
+        let quotes = JSON.parse(localStorage.getItem('pne_quotes') || '[]');
+        let quoteCatFilter = 'ALL';
+        function saveQuotes() {
+            localStorage.setItem('pne_quotes', JSON.stringify(quotes));
+            localStorage.setItem('pne_quote_cats', JSON.stringify(quoteCategories));
+        }
         let memoLockEnabled = localStorage.getItem('pne_memo_lock') === 'true';
         const DEFAULT_LINKS = [
             { name: 'Naver', url: 'https://naver.com', icon: 'naver' },
@@ -5119,6 +5340,11 @@
                 setTimeout(showDailyBriefing, 1500);
             }
 
+            // Quote Popup — 앱 시작 시마다 표시
+            if (quotes.filter(q => q.checked).length > 0) {
+                setTimeout(showQuotePopup, lastBriefing !== today() ? 3500 : 1500);
+            }
+
             // Backup Reminder
             const lastBackup = localStorage.getItem('pne_last_backup');
             if (lastBackup) {
@@ -5286,7 +5512,7 @@
         function switchView(view) {
             currentView = view;
             document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-            const navMap = { overview: '대시보드', kanban: '칸반', matrix: '전략', memos: '스마트', analytics: '리포트', lecture: '강의', settings: '시스템' };
+            const navMap = { overview: '대시보드', kanban: '칸반', matrix: '전략', memos: '스마트', analytics: '리포트', lecture: '강의', quotes: '명언', settings: '시스템' };
             Array.from(document.querySelectorAll('.nav-item')).find(el => el.textContent.includes(navMap[view]))?.classList.add('active');
             document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
             document.getElementById('v-' + view).classList.add('active');
@@ -5326,6 +5552,7 @@
             else if (currentView === 'analytics') renderAnalytics(fTasks, fMemos);
             else if (currentView === 'settings') renderSettings();
 
+            else if (currentView === 'quotes') renderQuotes();
             else if (currentView === 'lecture') renderLecture();
             render7Day();
         }
@@ -5904,6 +6131,142 @@
             renderColorPicker('#e8f5e9');
             document.getElementById('memo-modal').classList.add('open');
             setTimeout(() => { const t = document.getElementById('m-title'); t.focus(); t.setSelectionRange(t.value.length, t.value.length); }, 100);
+        }
+
+        // ===================== QUOTES =====================
+        function renderQuotes() {
+            const area = document.getElementById('v-quotes');
+            const filtered = quoteCatFilter === 'ALL' ? quotes : quotes.filter(q => q.cat === quoteCatFilter);
+            const checkedCount = quotes.filter(q => q.checked).length;
+
+            area.innerHTML = `
+<div class="quotes-wrap">
+  <div class="quotes-header">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <h3 style="font-family:'Outfit';font-size:16px;font-weight:800;white-space:nowrap">💬 명언</h3>
+      <span style="font-size:10px;color:var(--txt3);font-weight:600">체크된 ${checkedCount}개 · 팝업 대상</span>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-ghost" style="font-size:11px;padding:6px 12px" onclick="openAddQuoteCatModal()">+ 카테고리</button>
+      <button class="btn btn-primary" style="font-size:11px;padding:6px 14px" onclick="openAddQuoteModal()">+ 명언 추가</button>
+    </div>
+  </div>
+  <div class="quotes-cat-tabs" style="margin-bottom:18px">
+    <div class="quotes-cat-tab ${quoteCatFilter==='ALL'?'active':''}" onclick="setQuoteCatFilter('ALL')">전체</div>
+    ${quoteCategories.map(c=>`<div class="quotes-cat-tab ${quoteCatFilter===c?'active':''}" onclick="setQuoteCatFilter('${c.replace(/'/g,"\\'")}')">${c}</div>`).join('')}
+  </div>
+  ${filtered.length === 0 ? `
+    <div class="quotes-empty">
+      <div class="quotes-empty-icon">💬</div>
+      <div class="quotes-empty-txt">명언을 추가해보세요</div>
+      <div style="font-size:11px;color:var(--txt3);margin-top:6px">체크한 명언이 앱 시작 시 랜덤으로 팝업됩니다</div>
+    </div>` : filtered.map(q=>`
+    <div class="quote-card animate" id="qcard-${q.id}">
+      <input type="checkbox" class="quote-card-check" ${q.checked?'checked':''} onchange="toggleQuoteCheck('${q.id}',this.checked)" title="팝업 포함 여부">
+      <div class="quote-card-body">
+        <div class="quote-card-text">"${escHtml(q.text)}"</div>
+        ${q.author?`<div class="quote-card-author">— ${escHtml(q.author)}</div>`:''}
+        <div style="margin-top:5px"><span style="font-size:9px;font-weight:700;color:var(--p);background:rgba(124,58,237,.08);padding:2px 8px;border-radius:20px">${escHtml(q.cat)}</span></div>
+      </div>
+      <div class="quote-card-actions">
+        <button class="quote-act-btn" onclick="openEditQuoteModal('${q.id}')" title="수정">✏️</button>
+        <button class="quote-act-btn" onclick="deleteQuote('${q.id}')" title="삭제">🗑️</button>
+      </div>
+    </div>`).join('')}
+</div>`;
+        }
+
+        function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+        function setQuoteCatFilter(cat) {
+            quoteCatFilter = cat;
+            renderQuotes();
+        }
+
+        function toggleQuoteCheck(id, checked) {
+            const q = quotes.find(x=>x.id===id);
+            if (q) { q.checked = checked; saveQuotes(); }
+        }
+
+        function deleteQuote(id) {
+            if (!confirm('이 명언을 삭제할까요?')) return;
+            quotes = quotes.filter(q=>q.id!==id);
+            saveQuotes();
+            renderQuotes();
+        }
+
+        function openAddQuoteCatModal() {
+            const name = prompt('새 카테고리 이름을 입력하세요:');
+            if (!name || !name.trim()) return;
+            const trimmed = name.trim();
+            if (quoteCategories.includes(trimmed)) { showToast('이미 있는 카테고리입니다', 'err'); return; }
+            quoteCategories.push(trimmed);
+            saveQuotes();
+            renderQuotes();
+            showToast('카테고리 추가 완료', 'ok');
+        }
+
+        let editingQuoteId = null;
+        function openAddQuoteModal(prefillCat) {
+            editingQuoteId = null;
+            document.getElementById('qm-text').value = '';
+            document.getElementById('qm-author').value = '';
+            const catSel = document.getElementById('qm-cat');
+            catSel.innerHTML = quoteCategories.map(c=>`<option value="${escHtml(c)}" ${(prefillCat||quoteCatFilter)===c?'selected':''}>${escHtml(c)}</option>`).join('');
+            document.getElementById('qm-title').textContent = '명언 추가';
+            document.getElementById('quote-modal').classList.add('open');
+            setTimeout(()=>document.getElementById('qm-text').focus(),100);
+        }
+
+        function openEditQuoteModal(id) {
+            const q = quotes.find(x=>x.id===id);
+            if (!q) return;
+            editingQuoteId = id;
+            document.getElementById('qm-text').value = q.text;
+            document.getElementById('qm-author').value = q.author||'';
+            const catSel = document.getElementById('qm-cat');
+            catSel.innerHTML = quoteCategories.map(c=>`<option value="${escHtml(c)}" ${q.cat===c?'selected':''}>${escHtml(c)}</option>`).join('');
+            document.getElementById('qm-title').textContent = '명언 수정';
+            document.getElementById('quote-modal').classList.add('open');
+            setTimeout(()=>document.getElementById('qm-text').focus(),100);
+        }
+
+        function closeQuoteModal() { document.getElementById('quote-modal').classList.remove('open'); }
+
+        function saveQuoteFromModal() {
+            const text = document.getElementById('qm-text').value.trim();
+            if (!text) { showToast('명언 내용을 입력하세요', 'err'); return; }
+            const author = document.getElementById('qm-author').value.trim();
+            const cat = document.getElementById('qm-cat').value;
+            if (editingQuoteId) {
+                const q = quotes.find(x=>x.id===editingQuoteId);
+                if (q) { q.text=text; q.author=author; q.cat=cat; }
+            } else {
+                quotes.push({ id: Date.now().toString(), text, author, cat, checked: true });
+            }
+            saveQuotes();
+            closeQuoteModal();
+            renderQuotes();
+            showToast(editingQuoteId ? '명언 수정 완료' : '명언 추가 완료', 'ok');
+        }
+
+        function showQuotePopup() {
+            const pool = quotes.filter(q => q.checked);
+            if (!pool.length) return;
+            const q = pool[Math.floor(Math.random() * pool.length)];
+            const overlay = document.createElement('div');
+            overlay.className = 'quote-popup-overlay';
+            overlay.innerHTML = `
+<div class="quote-popup-box">
+  <button class="quote-popup-x" onclick="this.closest('.quote-popup-overlay').remove()">✕</button>
+  <div class="quote-popup-cat">${escHtml(q.cat)}</div>
+  <div class="quote-popup-icon">💬</div>
+  <div class="quote-popup-text">"${escHtml(q.text)}"</div>
+  ${q.author ? `<div class="quote-popup-author">— ${escHtml(q.author)}</div>` : '<div style="margin-bottom:28px"></div>'}
+  <button class="quote-popup-close" onclick="this.closest('.quote-popup-overlay').remove()">오늘도 파이팅 🔥</button>
+</div>`;
+            overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+            document.body.appendChild(overlay);
         }
 
         // ===================== SETTINGS =====================
