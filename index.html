@@ -3849,6 +3849,10 @@
                     <line x1="8" y1="13" x2="16" y2="13" />
                     <line x1="8" y1="17" x2="13" y2="17" />
                 </svg> Smart Memo</div>
+            <div class="nav-item" onclick="switchView('quotes')"><svg width="14" height="14" viewBox="0 0 24 24"
+                    fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                </svg> 좋은글 모음</div>
             <div class="nav-item" onclick="switchView('analytics')"><svg width="14" height="14" viewBox="0 0 24 24"
                     fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                     <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
@@ -4078,6 +4082,7 @@
             <div id="v-kanban" class="view"></div>
             <div id="v-matrix" class="view"></div>
             <div id="v-memos" class="view"></div>
+            <div id="v-quotes" class="view"></div>
             <div id="v-analytics" class="view"></div>
 
             <div id="v-lecture" class="view"></div>
@@ -4986,6 +4991,28 @@
         let catColors = JSON.parse(localStorage.getItem('pne_cats') || JSON.stringify(DEFAULT_CATS));
         const DEFAULT_MEMO_CATS = { '📁 일반': '#8b5cf6', '💡 아이디어': '#f59e0b', '📖 학습': '#10b981', '🔖 참고': '#3b82f6' };
         let memoCats = JSON.parse(localStorage.getItem('pne_memo_cats') || JSON.stringify(DEFAULT_MEMO_CATS));
+        
+        let quoteCategoryFilter = 'ALL';
+        const DEFAULT_QUOTE_CATS = {
+            '🔥 동기부여': '#ef4444',
+            '🌱 인생 & 지혜': '#10b981',
+            '💖 위로 & 힐링': '#ec4899',
+            '📚 성공 & 습관': '#3b82f6'
+        };
+        let quoteCats = JSON.parse(localStorage.getItem('pne_quote_cats') || JSON.stringify(DEFAULT_QUOTE_CATS));
+        
+        const DEFAULT_QUOTES = [
+            { id: 'q1', content: "삶이 있는 한 희망은 있다.", author: "키케로", category: "🌱 인생 & 지혜", createdAt: new Date().toISOString() },
+            { id: 'q2', content: "어제와 똑같이 살면서 다른 미래를 기대하는 것은 정신병 초기 증세이다.", author: "알베르트 아인슈타인", category: "📚 성공 & 습관", createdAt: new Date().toISOString() },
+            { id: 'q3', content: "가장 위대한 영광은 한 번도 넘어지지 않음이 아니라 넘어질 때마다 다시 일어나는 데 있다.", author: "넬슨 만델라", category: "🔥 동기부여", createdAt: new Date().toISOString() },
+            { id: 'q4', content: "당신이 할 수 있다고 믿든 할 수 없다고 믿든, 믿는 대로 될 것이다.", author: "헨리 포드", category: "🔥 동기부여", createdAt: new Date().toISOString() },
+            { id: 'q5', content: "피할 수 없으면 즐겨라.", author: "로버트 엘리엇", category: "🌱 인생 & 지혜", createdAt: new Date().toISOString() },
+            { id: 'q6', content: "인생은 속도가 아니라 방향이다.", author: "괴테", category: "🌱 인생 & 지혜", createdAt: new Date().toISOString() },
+            { id: 'q7', content: "한 번의 실패와 영원한 실패를 혼동하지 말라.", author: "F. 스콧 피츠제럴드", category: "💖 위로 & 힐링", createdAt: new Date().toISOString() },
+            { id: 'q8', content: "행복은 습관이다, 그것을 몸에 익혀라.", author: "엘버트 허버드", category: "💖 위로 & 힐링", createdAt: new Date().toISOString() },
+            { id: 'q9', content: "성공은 최종적인 것이 아니며, 실패는 치명적인 것이 아니다. 중요한 것은 계속 나아가는 용기다.", author: "윈스턴 처칠", category: "📚 성공 & 습관", createdAt: new Date().toISOString() }
+        ];
+        let quotes = JSON.parse(localStorage.getItem('pne_quotes') || JSON.stringify(DEFAULT_QUOTES));
         let localCatUpdatedAt = localStorage.getItem('pne_cat_updated_at') || new Date(0).toISOString();
         let pinnedMemoIds = new Set(JSON.parse(localStorage.getItem('pne_pinned_memos') || '[]'));
         const MEMO_COLORS = ['#fffde7', '#e8f5e9', '#e3f2fd', '#fce4ec', '#f3e5f5', '#e0f7fa'];
@@ -5020,6 +5047,8 @@
             localStorage.setItem('pne_weather_loc', weatherLoc);
             localStorage.setItem('pne_memo_lock', String(memoLockEnabled));
             localStorage.setItem('pne_cat_updated_at', localCatUpdatedAt);
+            localStorage.setItem('pne_quotes', JSON.stringify(quotes));
+            localStorage.setItem('pne_quote_cats', JSON.stringify(quoteCats));
             scheduleNotifications();
         }
         function markCatsUpdated() {
@@ -5118,6 +5147,9 @@
             if (lastBriefing !== today()) {
                 setTimeout(showDailyBriefing, 1500);
             }
+
+            // 좋은글 팝업
+            setTimeout(showRandomQuotePopup, 800);
 
             // Backup Reminder
             const lastBackup = localStorage.getItem('pne_last_backup');
@@ -5286,7 +5318,7 @@
         function switchView(view) {
             currentView = view;
             document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-            const navMap = { overview: '대시보드', kanban: '칸반', matrix: '전략', memos: '스마트', analytics: '리포트', lecture: '강의', settings: '시스템' };
+            const navMap = { overview: '대시보드', kanban: '칸반', matrix: '전략', memos: '스마트', quotes: '좋은글', analytics: '리포트', lecture: '강의', settings: '시스템' };
             Array.from(document.querySelectorAll('.nav-item')).find(el => el.textContent.includes(navMap[view]))?.classList.add('active');
             document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
             document.getElementById('v-' + view).classList.add('active');
@@ -5323,6 +5355,7 @@
             else if (currentView === 'kanban') renderKanban(fTasks);
             else if (currentView === 'matrix') renderMatrix(fTasks);
             else if (currentView === 'memos') renderMemosView(fMemos);
+            else if (currentView === 'quotes') renderQuotesView();
             else if (currentView === 'analytics') renderAnalytics(fTasks, fMemos);
             else if (currentView === 'settings') renderSettings();
 
@@ -7949,6 +7982,203 @@
             }
         }
 
+        function renderQuotesView() {
+            const area = document.getElementById('v-quotes');
+            const fQuotes = quotes.filter(q => {
+                const search = searchQuery.toLowerCase();
+                return q.content.toLowerCase().includes(search) || (q.author || '').toLowerCase().includes(search);
+            });
+            const filteredQuotes = quoteCategoryFilter === 'ALL' ? fQuotes : fQuotes.filter(q => q.category === quoteCategoryFilter);
+
+            area.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <div>
+        <h4 style="font-family:'Outfit';font-size:18px;font-weight:900;margin-bottom:4px">✨ 좋은글 모음</h4>
+        <div style="font-size:11px;color:var(--txt3)">${filteredQuotes.length}개의 좋은글이 있습니다</div>
+      </div>
+      <button class="btn btn-warn" onclick="openQuoteModal()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> 좋은글 추가</button>
+    </div>
+    <div class="memo-layout">
+      <div class="memo-main">
+        <div class="memo-cat-filter">
+          <button class="memo-cat-chip ${quoteCategoryFilter === 'ALL' ? 'active' : ''}" onclick="setQuoteFilter('ALL')">전체 <span class="memo-cat-chip-count">${fQuotes.length}</span></button>
+          ${Object.entries(quoteCats).map(([c, color]) => {
+                const cnt = fQuotes.filter(q => q.category === c).length;
+                return `<button class="memo-cat-chip ${quoteCategoryFilter === c ? 'active' : ''}" onclick="setQuoteFilter('${c}')"><span class="memo-cat-chip-dot" style="background:${color}"></span>${c} <span class="memo-cat-chip-count">${cnt}</span></button>`;
+            }).join('')}
+        </div>
+        <div class="memos-view-grid" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr))">
+          ${filteredQuotes.map((q) => `
+            <div class="memo-card animate" style="background:#f3e5f5; color:#4a148c; border: 1px solid rgba(139, 92, 246, 0.15); display: flex; flex-direction: column; justify-content: space-between; min-height: 150px; padding: 18px 20px;">
+              <div class="mc-actions" style="margin-bottom: 8px;">
+                <button onclick="event.stopPropagation();openQuoteEdit('${q.id}')" title="편집"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2-2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                <button onclick="event.stopPropagation();deleteQuote('${q.id}')" title="삭제" style="color:var(--danger)"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>
+              </div>
+              <div style="font-size: 14px; font-weight: 700; line-height: 1.5; white-space: pre-wrap; word-break: keep-all; flex: 1; display: flex; align-items: center; justify-content: center; text-align: center; margin-bottom: 12px; font-style: italic;">
+                "${q.content}"
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; border-top: 1px solid rgba(139, 92, 246, 0.1); padding-top: 8px;">
+                <span style="font-size: 11px; opacity: 0.8; font-weight: 600;">- ${q.author || '작자 미상'}</span>
+                ${q.category ? `<span class="mc-cat-tag" style="background:${quoteCats[q.category] ? quoteCats[q.category] + '22' : 'rgba(0,0,0,0.07)'};color:${quoteCats[q.category] || 'var(--txt2)'}; margin: 0; font-size: 9px; font-weight: 700;">${q.category}</span>` : ''}
+              </div>
+            </div>`).join('') || '<div class="empty" style="grid-column:span 4">등록된 좋은글이 없습니다.</div>'}
+        </div>
+      </div>
+      <div class="memo-sidebar animate animate-d1">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div class="memo-sidebar-title" style="margin-bottom:0">📂 Categories</div>
+          <button onclick="addQuoteCat()" title="카테고리 추가" style="background:var(--p);border:none;color:#fff;width:22px;height:22px;border-radius:6px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0">+</button>
+        </div>
+        <div class="memo-cat-item ${quoteCategoryFilter === 'ALL' ? 'active' : ''}" onclick="setQuoteFilter('ALL')">
+          <span>전체 카테고리</span>
+          <span class="memo-cat-count">${fQuotes.length}</span>
+        </div>
+        ${Object.entries(quoteCats).map(([c, color]) => {
+                const count = fQuotes.filter(q => q.category === c).length;
+                return `
+          <div class="memo-cat-item ${quoteCategoryFilter === c ? 'active' : ''}" onclick="setQuoteFilter('${c}')" style="position:relative;padding-right:50px">
+            <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:0">
+              <div style="width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0"></div>
+              <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c}</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:4px;position:absolute;right:8px;top:50%;transform:translateY(-50%)">
+              <span class="memo-cat-count">${count}</span>
+              <button onclick="event.stopPropagation();editQuoteCat('${c}')" title="편집" style="background:none;border:none;cursor:pointer;padding:1px 3px;border-radius:4px;font-size:10px;color:var(--txt3);opacity:0;transition:opacity .15s" class="mcc-edit-btn">✏️</button>
+              <button onclick="event.stopPropagation();deleteQuoteCat('${c}')" title="삭제" style="background:none;border:none;cursor:pointer;padding:1px 3px;border-radius:4px;font-size:10px;color:var(--danger);opacity:0;transition:opacity .15s" class="mcc-del-btn">✕</button>
+            </div>
+          </div>`;
+            }).join('')}
+      </div>
+    </div>`;
+        }
+
+        function setQuoteFilter(cat) {
+            quoteCategoryFilter = cat;
+            render();
+        }
+
+        function openQuoteModal() {
+            document.getElementById('q-title').textContent = "✨ 좋은글 추가";
+            document.getElementById('q-id').value = "";
+            document.getElementById('q-content').value = "";
+            document.getElementById('q-author').value = "";
+            
+            const qCatSelect = document.getElementById('q-cat');
+            qCatSelect.innerHTML = Object.keys(quoteCats).map(c => `<option value="${c}">${c}</option>`).join('');
+            
+            document.getElementById('quote-add-modal').classList.add('open');
+        }
+
+        function openQuoteEdit(id) {
+            const q = quotes.find(x => x.id === id);
+            if (!q) return;
+            document.getElementById('q-title').textContent = "✏️ 좋은글 수정";
+            document.getElementById('q-id').value = q.id;
+            document.getElementById('q-content').value = q.content;
+            document.getElementById('q-author').value = q.author || "";
+            
+            const qCatSelect = document.getElementById('q-cat');
+            qCatSelect.innerHTML = Object.keys(quoteCats).map(c => `<option value="${c}" ${q.category === c ? 'selected' : ''}>${c}</option>`).join('');
+            
+            document.getElementById('quote-add-modal').classList.add('open');
+        }
+
+        function saveQuote() {
+            const id = document.getElementById('q-id').value;
+            const content = document.getElementById('q-content').value.trim();
+            const author = document.getElementById('q-author').value.trim();
+            const category = document.getElementById('q-cat').value;
+            
+            if (!content) {
+                showToast('내용을 입력해 주세요.', 'err');
+                return;
+            }
+            
+            if (id) {
+                const q = quotes.find(x => x.id === id);
+                if (q) {
+                    q.content = content;
+                    q.author = author;
+                    q.category = category;
+                }
+            } else {
+                const newQ = {
+                    id: 'q_' + Date.now(),
+                    content: content,
+                    author: author,
+                    category: category,
+                    createdAt: new Date().toISOString()
+                };
+                quotes.push(newQ);
+            }
+            
+            save();
+            render();
+            closeModals();
+            showToast('좋은글이 저장되었습니다.', 'ok');
+        }
+
+        function deleteQuote(id) {
+            if (!confirm('이 좋은글을 삭제하시겠습니까?')) return;
+            quotes = quotes.filter(x => x.id !== id);
+            save();
+            render();
+            showToast('좋은글이 삭제되었습니다.', 'ok');
+        }
+
+        function addQuoteCat() {
+            const name = prompt('새 카테고리 이름을 입력하세요:');
+            if (!name || !name.trim()) return;
+            const n = name.trim();
+            if (quoteCats[n]) { showToast('이미 존재하는 카테고리입니다.', 'err'); return; }
+            const colors = ['#6366f1', '#f59e0b', '#10b981', '#3b82f6', '#ec4899', '#8b5cf6', '#06b6d4', '#ef4444'];
+            quoteCats[n] = colors[Object.keys(quoteCats).length % colors.length];
+            save();
+            render();
+            showToast(`"${n}" 카테고리가 추가됐어요! 🎉`, 'ok');
+        }
+
+        function editQuoteCat(oldName) {
+            const newName = prompt('카테고리 이름을 수정하세요:', oldName);
+            if (!newName || !newName.trim() || newName.trim() === oldName) return;
+            const n = newName.trim();
+            if (quoteCats[n]) { showToast('이미 존재하는 카테고리입니다.', 'err'); return; }
+            const color = quoteCats[oldName];
+            const newObj = {};
+            Object.entries(quoteCats).forEach(([k, v]) => { newObj[k === oldName ? n : k] = v; });
+            quoteCats = newObj;
+            quotes.forEach(q => { if (q.category === oldName) q.category = n; });
+            if (quoteCategoryFilter === oldName) quoteCategoryFilter = n;
+            save();
+            render();
+            showToast(`"${oldName}" → "${n}" 이름이 변경됐어요.`, 'ok');
+        }
+
+        function deleteQuoteCat(name) {
+            const count = quotes.filter(q => q.category === name).length;
+            const msg = count > 0
+                ? `"${name}" 카테고리를 삭제하면 ${count}개 좋은글의 카테고리가 초기화됩니다. 삭제할까요?`
+                : `"${name}" 카테고리를 삭제할까요?`;
+            if (!confirm(msg)) return;
+            delete quoteCats[name];
+            quotes.forEach(q => { if (q.category === name) q.category = ''; });
+            if (quoteCategoryFilter === name) quoteCategoryFilter = 'ALL';
+            save();
+            render();
+            showToast(`"${name}" 카테고리가 삭제됐어요.`, 'ok');
+        }
+
+        function showRandomQuotePopup() {
+            if (!quotes || quotes.length === 0) return;
+            const randomIndex = Math.floor(Math.random() * quotes.length);
+            const randomQuote = quotes[randomIndex];
+            
+            document.getElementById('quote-popup-content').innerHTML = `"${randomQuote.content}"`;
+            document.getElementById('quote-popup-author').textContent = `- ${randomQuote.author || '작자 미상'} -`;
+            
+            document.getElementById('quote-modal').classList.add('open');
+        }
+
         init();
 
         // 탭이 다시 활성화될 때 DB에서 최신 설정(카테고리 등)을 자동으로 당겨옴
@@ -8072,6 +8302,43 @@
         </div>
     </div>
 
+    <!-- RANDOM QUOTE MODAL (Start popup) -->
+    <div class="modal-overlay" id="quote-modal">
+        <div class="modal-box" style="max-width: 520px; padding: 40px 32px; text-align: center; border: 1px solid rgba(139, 92, 246, 0.25); background: linear-gradient(135deg, var(--surface) 0%, rgba(139, 92, 246, 0.05) 100%);">
+            <button class="modal-close" onclick="closeModals()">✕</button>
+            <div style="font-size: 11px; font-weight: 800; color: var(--p); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 20px;">✨ 오늘의 좋은글</div>
+            <div style="font-size: 40px; line-height: 1; color: var(--p); opacity: 0.3; font-family: Georgia, serif; margin-bottom: -10px;">“</div>
+            <div id="quote-popup-content" style="font-size: 20px; font-weight: 700; line-height: 1.6; color: var(--txt); margin-bottom: 16px; white-space: pre-wrap; word-break: keep-all; font-family: 'Pretendard', sans-serif;"></div>
+            <div style="font-size: 40px; line-height: 1; color: var(--p); opacity: 0.3; font-family: Georgia, serif; margin-top: -20px; margin-bottom: 12px; text-align: right;">”</div>
+            <div id="quote-popup-author" style="font-size: 13px; color: var(--txt3); margin-bottom: 30px; font-weight: 600;"></div>
+            <button class="btn btn-primary" style="margin: 0 auto; display: flex; padding: 11px 28px; border-radius: 12px; font-size: 12px; font-weight: 700; box-shadow: 0 4px 12px var(--p-glow);" onclick="closeModals()">시작하기</button>
+        </div>
+    </div>
+
+    <!-- ADD/EDIT QUOTE MODAL -->
+    <div class="modal-overlay" id="quote-add-modal">
+        <div class="modal-box">
+            <button class="modal-close" onclick="closeModals()">✕</button>
+            <div class="modal-title" id="q-title">✨ 좋은글 추가</div>
+            <div class="form-grid">
+                <input type="hidden" id="q-id">
+                <div class="form-field">
+                    <label>내용 (Quote Content)</label>
+                    <textarea id="q-content" rows="4" placeholder="좋은글 내용을 작성하세요..." style="width:100%;padding:12px;border-radius:12px;border:1.5px solid var(--border2);font-size:12px;background:var(--surface2);color:var(--txt);outline:none;font-family:'Pretendard';transition:all .18s;resize:vertical;"></textarea>
+                </div>
+                <div class="form-field">
+                    <label>출처 / 작가 (Author)</label>
+                    <input type="text" id="q-author" placeholder="예) 스티브 잡스, 넬슨 만델라, 작자 미상" style="width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid var(--border2);font-size:12px;background:var(--surface2);color:var(--txt);outline:none;font-family:'Pretendard';">
+                </div>
+                <div class="form-field">
+                    <label>카테고리 (Category)</label>
+                    <select id="q-cat" style="width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid var(--border2);font-size:12px;background:var(--surface2);color:var(--txt);outline:none;font-family:'Pretendard';cursor:pointer;"></select>
+                </div>
+                <button class="btn btn-primary" style="justify-content:center;padding:12px;font-weight:700;" onclick="saveQuote()">💾 저장하기</button>
+            </div>
+        </div>
+    </div>
+
     <!-- SIDEBAR OVERLAY (mobile) -->
     <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
 
@@ -8148,6 +8415,13 @@
                     <line x1="8" y1="17" x2="13" y2="17" />
                 </svg>
                 메모
+            </div>
+            <div class="mobile-nav-item" id="mnav-quotes" onclick="switchView('quotes');closeSidebar()">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                </svg>
+                좋은글
             </div>
             <div class="mobile-nav-item" id="mnav-analytics" onclick="switchView('analytics');closeSidebar()">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
