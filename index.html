@@ -7717,8 +7717,19 @@
             if (e.key === '/' && !e.target.matches('input,textarea,select') && !document.getElementById('lock-screen').classList.contains('show')) {
                 e.preventDefault(); openQuickCapture();
             }
+            // ' 키: 좋은글 빠른 캡처
+            if (e.key === "'" && !e.target.matches('input,textarea,select') && !document.getElementById('lock-screen').classList.contains('show')) {
+                e.preventDefault(); openQuoteQuickCapture();
+            }
             // ESC: 빠른 캡처 닫기
-            if (e.key === 'Escape') closeQuickCapture();
+            if (e.key === 'Escape') {
+                closeQuickCapture();
+                closeQuoteQuickCapture();
+            }
+            // Enter: 좋은글 빠른 캡처에서 저장
+            if (e.key === 'Enter' && document.getElementById('qqc-panel')?.classList.contains('open')) {
+                e.preventDefault(); saveQuoteQuickCapture();
+            }
             // Enter: 빠른 캡처에서 저장
             if (e.key === 'Enter' && document.getElementById('qc-panel')?.classList.contains('open')) {
                 e.preventDefault(); saveQuickCapture();
@@ -7739,6 +7750,66 @@
             document.getElementById('qc-panel').classList.remove('open');
             document.getElementById('qc-backdrop').classList.remove('open');
         }
+
+        // 좋은글 빠른 캡처
+        function openQuoteQuickCapture() {
+            const qCatSelect = document.getElementById('qqc-cat');
+            qCatSelect.innerHTML = Object.keys(quoteCats).map(c => `<option value="${c}">${c}</option>`).join('');
+            
+            document.getElementById('qqc-panel').classList.add('open');
+            document.getElementById('qqc-backdrop').classList.add('open');
+            document.getElementById('qqc-input').value = '';
+            document.getElementById('qqc-author').value = '';
+            document.getElementById('qqc-input').focus();
+        }
+        function closeQuoteQuickCapture() {
+            document.getElementById('qqc-panel').classList.remove('open');
+            document.getElementById('qqc-backdrop').classList.remove('open');
+        }
+        function saveQuoteQuickCapture() {
+            const text = document.getElementById('qqc-input').value.trim();
+            if (!text) { closeQuoteQuickCapture(); return; }
+            
+            let content = text;
+            let category = document.getElementById('qqc-cat').value;
+            let author = document.getElementById('qqc-author').value.trim() || '작자 미상';
+            
+            const hashIndex = text.indexOf('#');
+            if (hashIndex !== -1) {
+                content = text.substring(0, hashIndex).trim();
+                const catPart = text.substring(hashIndex + 1).trim();
+                const matchedCat = Object.keys(quoteCats).find(c => c.includes(catPart) || catPart.includes(c));
+                if (matchedCat) {
+                    category = matchedCat;
+                } else if (catPart) {
+                    const colors = ['#6366f1', '#f59e0b', '#10b981', '#3b82f6', '#ec4899', '#8b5cf6', '#06b6d4', '#ef4444'];
+                    quoteCats[catPart] = colors[Object.keys(quoteCats).length % colors.length];
+                    category = catPart;
+                }
+            }
+            
+            const authorRegex = /-\s*(.+)$/;
+            const match = content.match(authorRegex);
+            if (match) {
+                content = content.replace(authorRegex, '').trim();
+                author = match[1].trim();
+            }
+            
+            const newQ = {
+                id: 'q_' + Date.now(),
+                content: content.replace(/^"|"$/g, ''),
+                author: author,
+                category: category,
+                createdAt: new Date().toISOString()
+            };
+            
+            quotes.unshift(newQ);
+            save();
+            render();
+            closeQuoteQuickCapture();
+            showToast('✨ 새로운 좋은글이 저장되었습니다.', 'ok');
+        }
+
         async function saveQuickCapture() {
             const title = document.getElementById('qc-input').value.trim();
             if (!title) { closeQuickCapture(); return; }
@@ -8236,6 +8307,32 @@
             <div style="text-align:right">
                 <div style="margin-bottom:6px"><kbd>Enter</kbd> 저장 &nbsp; <kbd>Esc</kbd> 닫기</div>
                 <div style="font-size:9px; color:var(--txt3)">나머지 텍스트는 제목으로 저장됩니다.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- QUOTE QUICK CAPTURE -->
+    <div class="qc-backdrop" id="qqc-backdrop"
+        onclick="if(event.target === this && mousedownTarget === this) closeQuoteQuickCapture()"></div>
+    <div class="quick-capture" id="qqc-panel">
+        <div class="qc-header">
+            <div class="qc-icon" style="background:#f59e0b;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white"
+                    stroke-width="2.5" stroke-linecap="round">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                </svg></div>
+            <input class="qc-input" id="qqc-input" placeholder="좋은글 입력... (예: 삶이 있는 한 희망은 있다 #인생 & 지혜)">
+        </div>
+        <div class="qc-row">
+            <select id="qqc-cat" style="width: 150px;"></select>
+            <input type="text" id="qqc-author" placeholder="작가/출처 (선택)" style="padding:7px 10px;border-radius:10px;border:1.5px solid var(--border2);font-size:11px;background:var(--surface2);color:var(--txt);font-family:'Pretendard';flex:1;">
+        </div>
+        <div class="qc-hint">
+            <div style="display:flex; flex-direction:column; gap:4px">
+                <div>🏷️ <b>카테고리</b>: #동기부여, #인생 & 지혜 등 (#키워드)</div>
+                <div>✍️ <b>작가/출처</b>: 글 맨뒤에 '- 작가명' 형태로 적거나 입력 칸에 직접 적어주세요.</div>
+            </div>
+            <div style="text-align:right">
+                <div style="margin-bottom:6px"><kbd>Enter</kbd> 저장 &nbsp; <kbd>Esc</kbd> 닫기</div>
             </div>
         </div>
     </div>
