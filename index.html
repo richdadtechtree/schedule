@@ -3974,8 +3974,8 @@
                     <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
                 </svg> <span id="dark-label">다크모드</span></div>
             <div class="sidebar-version" style="margin-top: 8px; padding: 6px 8px 0; border-top: 1px dashed var(--border2); display: flex; justify-content: space-between; font-size: 9px; color: var(--txt3); font-weight: 700; opacity: 0.8;">
-                <span>v1.3.0</span>
-                <span>2026-06-02</span>
+                <span>v1.4.0</span>
+                <span>2026-06-03</span>
             </div>
         </div>
     </aside>
@@ -4634,8 +4634,21 @@
                             if (typeof renderCategorySelects === 'function') renderCategorySelects();
                         }
                         if (dbSettings.memo_categories) {
-                            memoCats = dbSettings.memo_categories;
+                            const dbMemoCats = dbSettings.memo_categories || {};
+                            memoCats = {};
+                            quoteCats = {};
+                            Object.entries(dbMemoCats).forEach(([k, v]) => {
+                                if (k.startsWith('좋은글::')) {
+                                    quoteCats[k.replace('좋은글::', '')] = v;
+                                } else {
+                                    memoCats[k] = v;
+                                }
+                            });
+                            if (Object.keys(memoCats).length === 0) memoCats = { ...DEFAULT_MEMO_CATS };
+                            if (Object.keys(quoteCats).length === 0) quoteCats = { ...DEFAULT_QUOTE_CATS };
+
                             localStorage.setItem('pne_memo_cats', JSON.stringify(memoCats));
+                            localStorage.setItem('pne_quote_cats', JSON.stringify(quoteCats));
                         }
                         localCatUpdatedAt = serverCatUpdatedAt;
                         localStorage.setItem('pne_cat_updated_at', localCatUpdatedAt);
@@ -4671,7 +4684,11 @@
                 dataChanged = false;
 
                 if (dbMemos && dbMemos.length > 0) {
-                    const dbMemosMap = new Map(dbMemos.map(m => [m.id, m]));
+                    const dbMemosRegular = dbMemos.filter(m => !m.id.startsWith('q_'));
+                    const dbMemosQuotes = dbMemos.filter(m => m.id.startsWith('q_'));
+
+                    // 1. 일반 메모 처리
+                    const dbMemosMap = new Map(dbMemosRegular.map(m => [m.id, m]));
                     const mergedMemos = [];
                     const localIdsProcessed = new Set();
                     
@@ -4701,7 +4718,7 @@
                         }
                     }
                     
-                    for (const dbMemo of dbMemos) {
+                    for (const dbMemo of dbMemosRegular) {
                         if (!localIdsProcessed.has(dbMemo.id)) {
                             mergedMemos.push({
                                 id: dbMemo.id,
@@ -4719,11 +4736,54 @@
                     mergedMemos.sort((a, b) => String(b.id).localeCompare(String(a.id)));
                     memos = mergedMemos;
                     
-                    dbMemos.forEach(m => {
+                    dbMemosRegular.forEach(m => {
                         if (m.checklist_items) {
                             checklistItems[m.id] = m.checklist_items;
                         }
                     });
+
+                    // 2. 좋은글 처리
+                    const dbQuotesMap = new Map(dbMemosQuotes.map(q => [q.id, q]));
+                    const mergedQuotes = [];
+                    const localQuoteIdsProcessed = new Set();
+
+                    for (const localQuote of quotes) {
+                        const dbQuote = dbQuotesMap.get(localQuote.id);
+                        if (dbQuote) {
+                            mergedQuotes.push({
+                                id: dbQuote.id,
+                                content: dbQuote.content,
+                                author: dbQuote.title,
+                                category: dbQuote.category ? dbQuote.category.replace('좋은글::', '') : '',
+                                createdAt: dbQuote.updated_at || new Date().toISOString()
+                            });
+                            localQuoteIdsProcessed.add(localQuote.id);
+                        } else {
+                            mergedQuotes.push(localQuote);
+                            localQuoteIdsProcessed.add(localQuote.id);
+                        }
+                    }
+
+                    for (const dbQuote of dbMemosQuotes) {
+                        if (!localQuoteIdsProcessed.has(dbQuote.id)) {
+                            mergedQuotes.push({
+                                id: dbQuote.id,
+                                content: dbQuote.content,
+                                author: dbQuote.title,
+                                category: dbQuote.category ? dbQuote.category.replace('좋은글::', '') : '',
+                                createdAt: dbQuote.updated_at || new Date().toISOString()
+                            });
+                        }
+                    }
+
+                    mergedQuotes.sort((a, b) => String(b.id).localeCompare(String(a.id)));
+                    quotes = mergedQuotes;
+                    localStorage.setItem('pne_quotes', JSON.stringify(quotes));
+
+                    if (!quotePopupShown && quotes.length > 0) {
+                        showRandomQuotePopup();
+                    }
+
                     dataChanged = true;
                 }
 
@@ -4917,13 +4977,18 @@
         async function syncSettingsToSupabase() {
             if (!supabaseClient || !currentUser) return false;
             try {
+                const combinedCats = { ...memoCats };
+                Object.entries(quoteCats).forEach(([k, v]) => {
+                    combinedCats['좋은글::' + k] = v;
+                });
+
                 const { error } = await supabaseClient
                     .from('user_settings')
                     .upsert({
                         user_id: currentUser.id,
                         links: links,
                         task_categories: catColors,
-                        memo_categories: memoCats,
+                        memo_categories: combinedCats,
                         pinned_memos: [...pinnedMemoIds],
                         memo_lock_enabled: memoLockEnabled,
                         lock_pin: lockPin,
@@ -7835,6 +7900,7 @@
             quotes.unshift(newQ);
             save();
             render();
+            syncQuoteToSupabase(newQ);
             closeQuoteQuickCapture();
             showToast('✨ 새로운 좋은글이 저장되었습니다.', 'ok');
         }
@@ -8179,6 +8245,23 @@
             document.getElementById('quote-add-modal').classList.add('open');
         }
 
+        async function syncQuoteToSupabase(q) {
+            if (!supabaseClient || !currentUser) return;
+            const memoObj = {
+                id: q.id,
+                title: q.author || '작자 미상',
+                content: q.content || '',
+                checklist: '',
+                color: '#f3e5f5',
+                category: '좋은글::' + (q.category || '')
+            };
+            await syncMemoToSupabase(memoObj);
+        }
+
+        async function deleteQuoteFromSupabase(id) {
+            await deleteMemoFromSupabase(id);
+        }
+
         function saveQuote() {
             const id = document.getElementById('q-id').value;
             const content = document.getElementById('q-content').value.trim();
@@ -8190,26 +8273,29 @@
                 return;
             }
             
+            let qTarget;
             if (id) {
                 const q = quotes.find(x => x.id === id);
                 if (q) {
                     q.content = content;
                     q.author = author;
                     q.category = category;
+                    qTarget = q;
                 }
             } else {
-                const newQ = {
+                qTarget = {
                     id: 'q_' + Date.now(),
                     content: content,
                     author: author,
                     category: category,
                     createdAt: new Date().toISOString()
                 };
-                quotes.push(newQ);
+                quotes.push(qTarget);
             }
             
             save();
             render();
+            if (qTarget) syncQuoteToSupabase(qTarget);
             closeModals();
             showToast('좋은글이 저장되었습니다.', 'ok');
         }
@@ -8219,7 +8305,14 @@
             quotes = quotes.filter(x => x.id !== id);
             save();
             render();
+            deleteQuoteFromSupabase(id);
             showToast('좋은글이 삭제되었습니다.', 'ok');
+        }
+
+        function markQuoteCatsUpdated() {
+            save();
+            render();
+            syncSettingsToSupabase();
         }
 
         function addQuoteCat() {
@@ -8229,8 +8322,7 @@
             if (quoteCats[n]) { showToast('이미 존재하는 카테고리입니다.', 'err'); return; }
             const colors = ['#6366f1', '#f59e0b', '#10b981', '#3b82f6', '#ec4899', '#8b5cf6', '#06b6d4', '#ef4444'];
             quoteCats[n] = colors[Object.keys(quoteCats).length % colors.length];
-            save();
-            render();
+            markQuoteCatsUpdated();
             showToast(`"${n}" 카테고리가 추가됐어요! 🎉`, 'ok');
         }
 
@@ -8245,8 +8337,7 @@
             quoteCats = newObj;
             quotes.forEach(q => { if (q.category === oldName) q.category = n; });
             if (quoteCategoryFilter === oldName) quoteCategoryFilter = n;
-            save();
-            render();
+            markQuoteCatsUpdated();
             showToast(`"${oldName}" → "${n}" 이름이 변경됐어요.`, 'ok');
         }
 
@@ -8259,12 +8350,13 @@
             delete quoteCats[name];
             quotes.forEach(q => { if (q.category === name) q.category = ''; });
             if (quoteCategoryFilter === name) quoteCategoryFilter = 'ALL';
-            save();
-            render();
+            markQuoteCatsUpdated();
             showToast(`"${name}" 카테고리가 삭제됐어요.`, 'ok');
         }
 
+        let quotePopupShown = false;
         function showRandomQuotePopup() {
+            if (quotePopupShown) return;
             if (!quotes || quotes.length === 0) return;
             const randomIndex = Math.floor(Math.random() * quotes.length);
             const randomQuote = quotes[randomIndex];
@@ -8273,6 +8365,7 @@
             document.getElementById('quote-popup-author').textContent = `- ${randomQuote.author || '작자 미상'} -`;
             
             document.getElementById('quote-modal').classList.add('open');
+            quotePopupShown = true;
         }
 
         init();
