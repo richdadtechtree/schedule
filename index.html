@@ -3974,7 +3974,7 @@
                     <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
                 </svg> <span id="dark-label">다크모드</span></div>
             <div class="sidebar-version" style="margin-top: 8px; padding: 6px 8px 0; border-top: 1px dashed var(--border2); display: flex; justify-content: space-between; font-size: 9px; color: var(--txt3); font-weight: 700; opacity: 0.8;">
-                <span>v1.4.0</span>
+                <span>v1.5.0</span>
                 <span>2026-06-03</span>
             </div>
         </div>
@@ -4746,6 +4746,7 @@
                     const dbQuotesMap = new Map(dbMemosQuotes.map(q => [q.id, q]));
                     const mergedQuotes = [];
                     const localQuoteIdsProcessed = new Set();
+                    const quotesToUpload = [];
 
                     for (const localQuote of quotes) {
                         const dbQuote = dbQuotesMap.get(localQuote.id);
@@ -4759,8 +4760,10 @@
                             });
                             localQuoteIdsProcessed.add(localQuote.id);
                         } else {
+                            // 로컬에는 있으나 DB에 없는 좋은글은 업로드 대상으로 지정
                             mergedQuotes.push(localQuote);
                             localQuoteIdsProcessed.add(localQuote.id);
+                            quotesToUpload.push(localQuote);
                         }
                     }
 
@@ -4779,6 +4782,12 @@
                     mergedQuotes.sort((a, b) => String(b.id).localeCompare(String(a.id)));
                     quotes = mergedQuotes;
                     localStorage.setItem('pne_quotes', JSON.stringify(quotes));
+
+                    // DB에 없는 좋은글 백그라운드 업로드 실행
+                    if (quotesToUpload.length > 0) {
+                        console.log(`[동기화] DB에 없는 좋은글 ${quotesToUpload.length}개를 업로드합니다.`);
+                        quotesToUpload.forEach(q => syncQuoteToSupabase(q));
+                    }
 
                     if (!quotePopupShown && quotes.length > 0) {
                         showRandomQuotePopup();
