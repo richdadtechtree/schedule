@@ -5246,12 +5246,6 @@
                 } catch (e) { console.warn('SW failed', e); }
             }
 
-            // Daily Briefing
-            const lastBriefing = localStorage.getItem('pne_last_briefing');
-            if (lastBriefing !== today()) {
-                setTimeout(showDailyBriefing, 1500);
-            }
-
             // 좋은글 팝업
             setTimeout(showRandomQuotePopup, 800);
 
@@ -7057,10 +7051,22 @@
 
         // ===================== MISC =====================
         function closeModals() {
+            const quoteModalOpen = document.getElementById('quote-modal').classList.contains('open');
             document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open'));
             const mb = document.querySelector('#memo-modal .modal-box');
             if (mb) mb.style.background = '';
             clearRelatedPopup();
+
+            if (quoteModalOpen) {
+                const lastBriefing = localStorage.getItem('pne_last_briefing');
+                const td = today();
+                const todayTasks = tasks.filter(t => !t.completed && isRecurringMatch(t, td));
+                const ddayTasks = tasks.filter(t => !t.completed && t.date && dday(t.date) && !dday(t.date).startsWith('D+'));
+                const hasBriefingContent = todayTasks.length > 0 || ddayTasks.length > 0;
+                if (lastBriefing !== td && hasBriefingContent) {
+                    setTimeout(showDailyBriefing, 300);
+                }
+            }
         }
         function selectDate(d) {
             selectedDate = d;
@@ -8375,7 +8381,17 @@
         let quotePopupShown = false;
         function showRandomQuotePopup() {
             if (quotePopupShown) return;
-            if (!quotes || quotes.length === 0) return;
+            if (!quotes || quotes.length === 0) {
+                const lastBriefing = localStorage.getItem('pne_last_briefing');
+                const td = today();
+                const todayTasks = tasks.filter(t => !t.completed && isRecurringMatch(t, td));
+                const ddayTasks = tasks.filter(t => !t.completed && t.date && dday(t.date) && !dday(t.date).startsWith('D+'));
+                const hasBriefingContent = todayTasks.length > 0 || ddayTasks.length > 0;
+                if (lastBriefing !== td && hasBriefingContent) {
+                    showDailyBriefing();
+                }
+                return;
+            }
             const randomIndex = Math.floor(Math.random() * quotes.length);
             const randomQuote = quotes[randomIndex];
             
