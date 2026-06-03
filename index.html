@@ -3353,6 +3353,15 @@
         }
 
         @media (max-width: 768px) {
+            /* 모바일 터치 기기용 카드 편집/삭제 액션 버튼 항상 표시 */
+            .memo-card .mc-actions {
+                display: flex !important;
+                opacity: 0.8;
+            }
+            .mcc-edit-btn, .mcc-del-btn {
+                opacity: 0.8 !important;
+            }
+
             html, body {
                 overflow-x: hidden;
                 overscroll-behavior-x: none;
@@ -3974,7 +3983,7 @@
                     <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
                 </svg> <span id="dark-label">다크모드</span></div>
             <div class="sidebar-version" style="margin-top: 8px; padding: 6px 8px 0; border-top: 1px dashed var(--border2); display: flex; justify-content: space-between; font-size: 9px; color: var(--txt3); font-weight: 700; opacity: 0.8;">
-                <span>v1.5.0</span>
+                <span>v1.6.0</span>
                 <span>2026-06-03</span>
             </div>
         </div>
