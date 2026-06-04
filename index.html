@@ -3578,6 +3578,11 @@
                 margin-left: 0;
                 padding: 8px 8px 0 8px;
                 height: 100vh;
+                transition: transform .35s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+
+            .main.sidebar-pushed {
+                transform: translateX(var(--sidebar));
             }
 
             /* Header: compact */
@@ -5531,12 +5536,15 @@
         function toggleSidebar() {
             const sb = document.querySelector('.sidebar');
             const ov = document.getElementById('sidebar-overlay');
+            const main = document.querySelector('.main');
             sb.classList.toggle('mobile-open');
             ov.classList.toggle('open');
+            main.classList.toggle('sidebar-pushed');
         }
         function closeSidebar() {
             document.querySelector('.sidebar').classList.remove('mobile-open');
             document.getElementById('sidebar-overlay').classList.remove('open');
+            document.querySelector('.main').classList.remove('sidebar-pushed');
         }
         function toggleMobileSearch(open) {
             const bar = document.getElementById('mobile-search-bar');
