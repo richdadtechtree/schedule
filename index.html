@@ -8612,14 +8612,26 @@
                 }
                 return;
             }
-            const randomIndex = Math.floor(Math.random() * quotes.length);
-            const randomQuote = quotes[randomIndex];
-            
+            const randomQuote = pickWeightedRandomQuote(quotes);
+            randomQuote.showCount = (randomQuote.showCount || 0) + 1;
+            localStorage.setItem('pne_quotes', JSON.stringify(quotes));
+
             document.getElementById('quote-popup-content').innerHTML = `"${randomQuote.content}"`;
             document.getElementById('quote-popup-author').textContent = `- ${randomQuote.author || '작자 미상'} -`;
-            
+
             document.getElementById('quote-modal').classList.add('open');
             quotePopupShown = true;
+        }
+        function pickWeightedRandomQuote(list) {
+            // 자주 보여준 글일수록 가중치를 낮춰 덜 노출되도록 함
+            const weights = list.map(q => 1 / Math.pow((q.showCount || 0) + 1, 1.5));
+            const total = weights.reduce((a, b) => a + b, 0);
+            let r = Math.random() * total;
+            for (let i = 0; i < list.length; i++) {
+                r -= weights[i];
+                if (r <= 0) return list[i];
+            }
+            return list[list.length - 1];
         }
 
         init();
