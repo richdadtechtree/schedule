@@ -4340,11 +4340,12 @@
             <div class="form-grid">
                 <div class="form-field">
                     <label>Title</label>
-                    <input type="text" id="m-title" placeholder="Memo title">
+                    <input type="text" id="m-title" placeholder="Memo title" oninput="onMemoFieldInput()" onkeydown="handleMemoModalKeydown(event)">
                 </div>
                 <div class="form-field">
                     <label>Content</label>
-                    <textarea id="m-content" rows="4" placeholder="Write your memo..."></textarea>
+                    <textarea id="m-content" rows="4" placeholder="Write your memo... (**굵게**, *기울임*, - 목록 지원)" oninput="onMemoFieldInput(true)" onkeydown="handleMemoModalKeydown(event)"></textarea>
+                    <div id="m-content-counter" style="font-size:10px;color:var(--txt3);text-align:right;margin-top:4px"></div>
                 </div>
                 <div class="form-field">
                     <div class="color-picker-label">Color</div>
@@ -4366,7 +4367,7 @@
                             mode</span>
                     </div>
                     <textarea id="m-checklist" rows="4" placeholder="항목 입력 (엔터로 구분)&#10;예) 준비서면 작성&#10;예) 증거자료 정리"
-                        style="display:none;margin-top:8px"></textarea>
+                        style="display:none;margin-top:8px" oninput="onMemoFieldInput(true)" onkeydown="handleMemoModalKeydown(event)"></textarea>
                 </div>
                 <input type="hidden" id="m-id">
                 <button class="btn btn-warn" style="justify-content:center;padding:11px" onclick="saveMemo()">💾 Save
@@ -4391,6 +4392,7 @@
             <div class="mv-header">
                 <div class="mv-title" id="mv-title">Memo Title</div>
             </div>
+            <div id="mv-updated-at" style="font-size:10px;color:var(--txt3);font-weight:600;margin:-6px 0 10px"></div>
             <div class="mv-content" id="mv-content">Memo Content</div>
             <div id="mv-checklist-container"></div>
             <div id="mv-cat-change-container"></div>
@@ -6829,6 +6831,92 @@
             sel.innerHTML = '<option value="">카테고리 없음</option>' +
                 Object.keys(memoCats).map(c => `<option value="${c}" ${selectedCat === c ? 'selected' : ''}>${c}</option>`).join('');
         }
+        // ---- Memo writing UX helpers ----
+        const MEMO_DRAFT_KEY = 'pne_memo_draft';
+        let memoDraftTimer = null;
+        function getMemoFormState() {
+            return {
+                id: document.getElementById('m-id').value || 'new',
+                title: document.getElementById('m-title').value,
+                content: document.getElementById('m-content').value,
+                checklist: document.getElementById('m-checklist').value,
+                color: document.getElementById('m-color').value,
+                category: document.getElementById('m-cat') ? document.getElementById('m-cat').value : ''
+            };
+        }
+        function saveMemoDraftNow() {
+            try { localStorage.setItem(MEMO_DRAFT_KEY, JSON.stringify(getMemoFormState())); } catch (e) { }
+        }
+        function clearMemoDraft() {
+            localStorage.removeItem(MEMO_DRAFT_KEY);
+        }
+        function restoreMemoDraftIfAny(targetId) {
+            let draft;
+            try { draft = JSON.parse(localStorage.getItem(MEMO_DRAFT_KEY) || 'null'); } catch (e) { draft = null; }
+            if (!draft || draft.id !== targetId) return;
+            if (!draft.title && !draft.content && !draft.checklist) return;
+            document.getElementById('m-title').value = draft.title || '';
+            document.getElementById('m-content').value = draft.content || '';
+            if (draft.color) { document.getElementById('m-color').value = draft.color; renderColorPicker(draft.color); }
+            if (draft.category && document.getElementById('m-cat')) document.getElementById('m-cat').value = draft.category;
+            if (draft.checklist) {
+                document.getElementById('m-checklist').value = draft.checklist;
+                document.getElementById('m-checklist').style.display = 'block';
+                document.getElementById('m-has-checklist').checked = true;
+            }
+            showToast('✏️ 작성 중이던 내용을 불러왔어요', 'ok');
+        }
+        function onMemoFieldInput(resize) {
+            if (resize) autosizeMemoTextareas();
+            updateMemoContentCounter();
+            clearTimeout(memoDraftTimer);
+            memoDraftTimer = setTimeout(saveMemoDraftNow, 500);
+        }
+        function updateMemoContentCounter() {
+            const el = document.getElementById('m-content-counter');
+            if (!el) return;
+            const len = (document.getElementById('m-content').value || '').length;
+            el.textContent = `${len.toLocaleString()}자`;
+        }
+        function autosizeMemoTextareas() {
+            ['m-content', 'm-checklist'].forEach(id => {
+                const ta = document.getElementById(id);
+                if (!ta) return;
+                ta.style.height = 'auto';
+                ta.style.height = Math.min(ta.scrollHeight, 420) + 'px';
+            });
+        }
+        function handleMemoModalKeydown(e) {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                e.preventDefault();
+                saveMemo();
+            }
+        }
+        function mdLite(text) {
+            if (!text) return '';
+            let s = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener" style="color:var(--p);text-decoration:underline">$1</a>');
+            s = s.replace(/(^|[\s])(https?:\/\/[^\s<]+)/g, '$1<a href="$2" target="_blank" rel="noopener" style="color:var(--p);text-decoration:underline">$2</a>');
+            s = s.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+            s = s.replace(/(?<!\*)\*([^*\n]+)\*(?!\*)/g, '<em>$1</em>');
+            s = s.replace(/`([^`\n]+)`/g, '<code style="background:rgba(0,0,0,.08);padding:1px 5px;border-radius:5px;font-size:.92em">$1</code>');
+            s = s.split('\n').map(line => {
+                if (/^\s*[-*]\s+/.test(line)) return '• ' + line.replace(/^\s*[-*]\s+/, '');
+                return line;
+            }).join('\n');
+            return s;
+        }
+        function memoTimeAgo(iso) {
+            const diffMs = Date.now() - new Date(iso).getTime();
+            const min = Math.floor(diffMs / 60000);
+            if (min < 1) return '방금 전';
+            if (min < 60) return `${min}분 전`;
+            const hr = Math.floor(min / 60);
+            if (hr < 24) return `${hr}시간 전`;
+            const day = Math.floor(hr / 24);
+            if (day < 30) return `${day}일 전`;
+            return new Date(iso).toLocaleDateString('ko-KR');
+        }
         function openMemoModal() {
             document.getElementById('m-title').value = '';
             document.getElementById('m-content').value = '';
@@ -6840,6 +6928,9 @@
             document.getElementById('m-checklist').value = '';
             renderColorPicker('');
             renderMemoCatSelect(memoCategoryFilter !== 'ALL' ? memoCategoryFilter : '');
+            restoreMemoDraftIfAny('new');
+            updateMemoContentCounter();
+            autosizeMemoTextareas();
             document.getElementById('memo-modal').classList.add('open');
         }
         function openMemoView(id) {
@@ -6863,7 +6954,9 @@
 
             document.getElementById('memo-view-card').dataset.memoId = id;
             document.getElementById('mv-title').innerText = m.title || 'Memo';
-            document.getElementById('mv-content').innerText = m.content || '';
+            document.getElementById('mv-content').innerHTML = mdLite(m.content || '');
+            const updatedEl = document.getElementById('mv-updated-at');
+            if (updatedEl) updatedEl.textContent = m.updatedAt ? `수정: ${memoTimeAgo(m.updatedAt)}` : '';
 
             const catContainer = document.getElementById('mv-cat-container');
             if (m.category) {
@@ -6986,6 +7079,9 @@
             document.getElementById('m-checklist').value = m.checklist || '';
             renderColorPicker(m.color || '');
             renderMemoCatSelect(m.category || '');
+            restoreMemoDraftIfAny(m.id);
+            updateMemoContentCounter();
+            autosizeMemoTextareas();
             document.getElementById('memo-modal').classList.add('open');
         }
         async function saveMemo() {
@@ -6996,18 +7092,20 @@
             const cb = document.getElementById('m-has-checklist');
             const checklist = cb.checked ? (document.getElementById('m-checklist').value || '') : '';
             const id = document.getElementById('m-id').value;
+            const now = new Date().toISOString();
             let memoObj;
             if (id) {
                 const idx = memos.findIndex(x => x.id === id);
                 if (idx >= 0) {
-                    memos[idx] = { ...memos[idx], title, content, checklist, color, category, dirty: true };
+                    memos[idx] = { ...memos[idx], title, content, checklist, color, category, updatedAt: now, dirty: true };
                     memoObj = memos[idx];
                 }
             } else {
-                memoObj = { id: Date.now() + '', title, content, checklist, color, category, dirty: true };
+                memoObj = { id: Date.now() + '', title, content, checklist, color, category, createdAt: now, updatedAt: now, dirty: true };
                 memos.unshift(memoObj);
             }
             save();
+            clearMemoDraft();
             if (memoObj) await syncMemoToSupabase(memoObj);
             closeModals();
             render();
