@@ -38,16 +38,24 @@
         }
 
         [data-dark] {
-            --bg: #090d16; /* Clean deep slate-dark */
-            --surface: rgba(17, 24, 39, 0.75);
-            --surface2: rgba(31, 41, 55, 0.55);
-            --border: rgba(99, 102, 241, 0.16);
-            --border2: rgba(255, 255, 255, 0.04);
-            --txt: #f8fafc;
-            --txt2: #cbd5e1;
-            --txt3: #64748b;
-            --shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5);
-            --shadow-lg: 0 20px 50px -12px rgba(0, 0, 0, 0.6);
+            --p: #7c83f5; /* Slightly brighter Indigo, still strong vs white button text */
+            --p2: #df6bf0; /* Slightly brighter Fuchsia */
+            --p3: #29b6f6; /* Slightly brighter Sky */
+            --p-glow: rgba(124, 131, 245, 0.22);
+            --bg: #0a0e17; /* Clean deep slate-dark */
+            --surface: rgba(22, 28, 41, 0.88);
+            --surface2: rgba(33, 41, 56, 0.72);
+            --border: rgba(124, 131, 245, 0.22);
+            --border2: rgba(255, 255, 255, 0.09);
+            --txt: #f8fafc; /* Slate 50 */
+            --txt2: #dbe3ee; /* brighter slate for body copy */
+            --txt3: #9aa7bd; /* brighter slate for secondary/meta text */
+            --shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.55);
+            --shadow-lg: 0 20px 50px -12px rgba(0, 0, 0, 0.65);
+        }
+
+        [data-dark] body {
+            text-rendering: optimizeLegibility;
         }
 
         * {
@@ -1568,15 +1576,15 @@
         }
 
         [data-dark] .memo-card {
-            border: 1px solid rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.09);
         }
 
         [data-dark] .memo-card::before {
             content: '';
             position: absolute;
             inset: 0;
-            background: #090d16;
-            opacity: 0.82;
+            background: #0a0e17;
+            opacity: 0.78;
             border-radius: inherit;
             pointer-events: none;
             z-index: 0;
