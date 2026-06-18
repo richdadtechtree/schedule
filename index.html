@@ -1683,6 +1683,29 @@
             transform: translateY(-1px);
         }
 
+        .mv-copy-top {
+            position: absolute;
+            top: 16px;
+            right: 138px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            background: var(--surface2);
+            color: var(--txt2);
+            border: 1px solid var(--border2);
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 700;
+            transition: opacity .2s, transform .15s;
+        }
+
+        .mv-copy-top:hover {
+            opacity: .85;
+            transform: translateY(-1px);
+        }
+
 
         @keyframes modal-pop {
             from {
@@ -4403,6 +4426,14 @@
     <div class="modal-overlay" id="memo-view-modal">
         <div class="memo-view-card" id="memo-view-card" data-memo-id="">
             <button class="mv-close" onclick="closeModals()">✕</button>
+            <button class="mv-copy-top" id="mv-copy-btn" onclick="copyMemoText(document.getElementById('memo-view-card').dataset.memoId)">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2" />
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                </svg>
+                복사
+            </button>
             <button class="mv-edit-top" id="mv-edit-btn">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
                     stroke-linecap="round" stroke-linejoin="round">
