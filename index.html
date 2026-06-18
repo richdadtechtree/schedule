@@ -2478,6 +2478,29 @@
             box-shadow: 0 0 0 3px var(--p-glow)
         }
 
+        /* Memo modal: wider box, bigger fonts, roomier content area */
+        #memo-modal .modal-box {
+            max-width: 640px;
+        }
+
+        #memo-modal #m-title {
+            font-size: 16px;
+            padding: 12px 14px;
+        }
+
+        #memo-modal #m-content,
+        #memo-modal #m-checklist {
+            font-size: 15px;
+            line-height: 1.65;
+            padding: 14px 16px;
+            min-height: 240px;
+            resize: vertical;
+        }
+
+        #memo-modal #m-checklist {
+            min-height: 140px;
+        }
+
         .weekly-days {
             padding: 8px;
             background: var(--surface2);
