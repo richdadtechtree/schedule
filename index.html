@@ -4009,6 +4009,10 @@
                     fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
                 </svg> 좋은글 모음</div>
+            <div class="nav-item" onclick="switchView('books')"><svg width="14" height="14" viewBox="0 0 24 24"
+                    fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                </svg> 책갈피</div>
             <div class="nav-item" onclick="switchView('analytics')"><svg width="14" height="14" viewBox="0 0 24 24"
                     fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                     <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
@@ -4243,6 +4247,7 @@
             <div id="v-matrix" class="view"></div>
             <div id="v-memos" class="view"></div>
             <div id="v-quotes" class="view"></div>
+            <div id="v-books" class="view"></div>
             <div id="v-analytics" class="view"></div>
 
             <div id="v-lecture" class="view"></div>
@@ -5249,6 +5254,7 @@
         let quotes = JSON.parse(localStorage.getItem('pne_quotes') || '[]');
         // 기존 기기에 남아있던 기본 셋팅 데이터(q1~q9)를 제거합니다.
         quotes = quotes.filter(q => !['q1', 'q2', 'q3', 'q4', 'q5', 'q6', 'q7', 'q8', 'q9'].includes(q.id));
+        let books = JSON.parse(localStorage.getItem('pne_books') || '[]');
         let localCatUpdatedAt = localStorage.getItem('pne_cat_updated_at') || new Date(0).toISOString();
         let pinnedMemoIds = new Set(JSON.parse(localStorage.getItem('pne_pinned_memos') || '[]'));
         const MEMO_COLORS = ['#fffde7', '#e8f5e9', '#e3f2fd', '#fce4ec', '#f3e5f5', '#e0f7fa'];
@@ -5285,6 +5291,7 @@
             localStorage.setItem('pne_cat_updated_at', localCatUpdatedAt);
             localStorage.setItem('pne_quotes', JSON.stringify(quotes));
             localStorage.setItem('pne_quote_cats', JSON.stringify(quoteCats));
+            localStorage.setItem('pne_books', JSON.stringify(books));
             scheduleNotifications();
         }
         function markCatsUpdated() {
@@ -5548,7 +5555,7 @@
         function switchView(view) {
             currentView = view;
             document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-            const navMap = { overview: '대시보드', kanban: '칸반', matrix: '전략', memos: '스마트', quotes: '좋은글', analytics: '리포트', lecture: '강의', settings: '시스템' };
+            const navMap = { overview: '대시보드', kanban: '칸반', matrix: '전략', memos: '스마트', quotes: '좋은글', books: '책갈피', analytics: '리포트', lecture: '강의', settings: '시스템' };
             Array.from(document.querySelectorAll('.nav-item')).find(el => el.textContent.includes(navMap[view]))?.classList.add('active');
             document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
             document.getElementById('v-' + view).classList.add('active');
@@ -5586,6 +5593,7 @@
             else if (currentView === 'matrix') renderMatrix(fTasks);
             else if (currentView === 'memos') renderMemosView(fMemos);
             else if (currentView === 'quotes') renderQuotesView();
+            else if (currentView === 'books') renderBooksView();
             else if (currentView === 'analytics') renderAnalytics(fTasks, fMemos);
             else if (currentView === 'settings') renderSettings();
 
@@ -8067,10 +8075,15 @@
             if (e.key === "'" && !e.target.matches('input,textarea,select') && !document.getElementById('lock-screen').classList.contains('show')) {
                 e.preventDefault(); openQuoteQuickCapture();
             }
+            // p 키: 책갈피 기록
+            if (e.key === 'p' && !e.target.matches('input,textarea,select') && !document.getElementById('lock-screen').classList.contains('show')) {
+                e.preventDefault(); openBookModal();
+            }
             // ESC: 빠른 캡처 닫기
             if (e.key === 'Escape') {
                 closeQuickCapture();
                 closeQuoteQuickCapture();
+                closeModals();
             }
             // Enter: 좋은글 빠른 캡처에서 저장
             if (e.key === 'Enter' && document.getElementById('qqc-panel')?.classList.contains('open')) {
@@ -8562,6 +8575,106 @@
             showToast('좋은글이 삭제되었습니다.', 'ok');
         }
 
+        // ===================== 책갈피 (BOOKS) =====================
+        function findBookByTitle(title) {
+            const t = (title || '').trim().toLowerCase();
+            if (!t) return null;
+            return books.find(b => b.title.trim().toLowerCase() === t);
+        }
+        function openBookModal(id) {
+            renderBookTitleList();
+            document.getElementById('bk-id').value = '';
+            document.getElementById('bk-title').value = '';
+            document.getElementById('bk-page').value = '';
+            document.getElementById('bk-existing-hint').style.display = 'none';
+            document.getElementById('book-modal-title').textContent = '🔖 책갈피 기록';
+            if (id) {
+                const b = books.find(x => x.id === id);
+                if (b) {
+                    document.getElementById('bk-id').value = b.id;
+                    document.getElementById('bk-title').value = b.title;
+                    document.getElementById('bk-page').value = b.page;
+                    document.getElementById('book-modal-title').textContent = '🔖 책갈피 수정';
+                }
+            }
+            document.getElementById('book-modal').classList.add('open');
+            setTimeout(() => document.getElementById('bk-title').focus(), 50);
+        }
+        function renderBookTitleList() {
+            const list = document.getElementById('bk-title-list');
+            if (list) list.innerHTML = books.map(b => `<option value="${b.title}"></option>`).join('');
+        }
+        function onBookTitleInput() {
+            const idInput = document.getElementById('bk-id');
+            if (idInput.value) return; // 이미 수정 중인 항목이면 자동 매칭 안 함
+            const existing = findBookByTitle(document.getElementById('bk-title').value);
+            const hint = document.getElementById('bk-existing-hint');
+            if (existing) {
+                idInput.value = existing.id;
+                document.getElementById('bk-page').value = existing.page;
+                hint.style.display = 'block';
+            } else {
+                hint.style.display = 'none';
+            }
+        }
+        function saveBook() {
+            const id = document.getElementById('bk-id').value;
+            const title = document.getElementById('bk-title').value.trim();
+            const page = parseInt(document.getElementById('bk-page').value, 10);
+            if (!title) { showToast('책 제목을 입력해 주세요.', 'err'); return; }
+            if (isNaN(page) || page < 0) { showToast('페이지를 올바르게 입력해 주세요.', 'err'); return; }
+
+            const now = new Date().toISOString();
+            let b = id ? books.find(x => x.id === id) : findBookByTitle(title);
+            if (b) {
+                b.title = title;
+                b.page = page;
+                b.updatedAt = now;
+            } else {
+                b = { id: 'bk_' + Date.now(), title, page, createdAt: now, updatedAt: now };
+                books.push(b);
+            }
+            save();
+            render();
+            closeModals();
+            showToast('책갈피가 저장되었습니다. 🔖', 'ok');
+        }
+        function deleteBook(id) {
+            if (!confirm('이 책갈피를 삭제하시겠습니까?')) return;
+            books = books.filter(x => x.id !== id);
+            save();
+            render();
+            showToast('책갈피가 삭제되었습니다.', 'ok');
+        }
+        function renderBooksView() {
+            const area = document.getElementById('v-books');
+            const search = searchQuery.toLowerCase();
+            const fBooks = books.filter(b => b.title.toLowerCase().includes(search))
+                .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+            area.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <div>
+        <h4 style="font-family:'Outfit';font-size:18px;font-weight:900;margin-bottom:4px">🔖 책갈피</h4>
+        <div style="font-size:11px;color:var(--txt3)">${fBooks.length}권의 책을 기록 중이에요 · <b>p</b> 키로 빠르게 기록할 수 있어요</div>
+      </div>
+      <button class="btn btn-warn" onclick="openBookModal()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> 책갈피 추가</button>
+    </div>
+    <div class="memos-view-grid" style="grid-template-columns: repeat(auto-fill, minmax(240px, 1fr))">
+      ${fBooks.map(b => `
+        <div class="memo-card animate" style="background:var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--p); display: flex; flex-direction: column; justify-content: space-between; min-height: 130px; padding: 20px 22px; box-shadow: var(--shadow); border-radius: 20px;">
+          <div class="mc-actions" style="margin-bottom: 8px;">
+            <button onclick="event.stopPropagation();openBookModal('${b.id}')" title="편집"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2-2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+            <button onclick="event.stopPropagation();deleteBook('${b.id}')" title="삭제" style="color:var(--danger)"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>
+          </div>
+          <div style="font-size: 15px; font-weight: 800; line-height: 1.5; color: var(--txt); word-break: keep-all; margin-bottom: 14px;">${b.title}</div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; border-top: 1px solid var(--border2); padding-top: 10px;">
+            <span style="font-size: 20px; font-weight: 900; color: var(--p);">${b.page}p</span>
+            <span style="font-size: 10px; color: var(--txt3);">${memoTimeAgo(b.updatedAt)}</span>
+          </div>
+        </div>`).join('') || '<div class="empty" style="grid-column:span 4">아직 기록된 책갈피가 없어요. <b>p</b> 키를 눌러 추가해보세요!</div>'}
+    </div>`;
+        }
+
         function markQuoteCatsUpdated() {
             save();
             render();
@@ -8847,6 +8960,31 @@
                     <select id="q-cat" style="width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid var(--border2);font-size:12px;background:var(--surface2);color:var(--txt);outline:none;font-family:'Pretendard';cursor:pointer;"></select>
                 </div>
                 <button class="btn btn-primary" style="justify-content:center;padding:12px;font-weight:700;" onclick="saveQuote()">💾 저장하기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- BOOK BOOKMARK MODAL -->
+    <div class="modal-overlay" id="book-modal">
+        <div class="modal-box">
+            <button class="modal-close" onclick="closeModals()">✕</button>
+            <div class="modal-title" id="book-modal-title">🔖 책갈피 기록</div>
+            <div class="form-grid">
+                <input type="hidden" id="bk-id">
+                <div class="form-field">
+                    <label>책 제목</label>
+                    <input type="text" id="bk-title" list="bk-title-list" placeholder="책 제목을 입력하세요" autocomplete="off"
+                        style="width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid var(--border2);font-size:13px;background:var(--surface2);color:var(--txt);outline:none;font-family:'Pretendard';"
+                        oninput="onBookTitleInput()">
+                    <datalist id="bk-title-list"></datalist>
+                </div>
+                <div class="form-field">
+                    <label>현재 페이지</label>
+                    <input type="number" id="bk-page" min="0" placeholder="예) 128"
+                        style="width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid var(--border2);font-size:13px;background:var(--surface2);color:var(--txt);outline:none;font-family:'Pretendard';">
+                </div>
+                <div id="bk-existing-hint" style="display:none;font-size:11.5px;color:var(--txt3);margin-top:-4px;">📖 기존 기록을 불러왔어요. 페이지만 수정하고 저장하면 돼요.</div>
+                <button class="btn btn-primary" style="justify-content:center;padding:12px;font-weight:700;" onclick="saveBook()">💾 저장하기</button>
             </div>
         </div>
     </div>
