@@ -8470,6 +8470,22 @@
             quotePopupShown = true;
         }
 
+        function copyCurrentPopupQuote() {
+            const content = document.getElementById('quote-popup-content').innerText || '';
+            const author = document.getElementById('quote-popup-author').innerText || '';
+            const text = `${content}\n${author}`;
+            navigator.clipboard.writeText(text).then(() => {
+                showToast('클립보드에 복사됐어요! 📋');
+            }).catch(() => {
+                const ta = document.createElement('textarea');
+                ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+                document.body.appendChild(ta); ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+                showToast('클립보드에 복사됐어요! 📋');
+            });
+        }
+
         init();
 
         // 탭이 다시 활성화될 때 DB에서 최신 설정(카테고리 등)을 자동으로 당겨옴
@@ -8630,7 +8646,16 @@
             <div id="quote-popup-content" style="font-size: 21px; font-weight: 700; line-height: 1.75; color: var(--txt); margin-bottom: 18px; white-space: pre-wrap; word-break: keep-all; font-family: 'Pretendard', sans-serif; letter-spacing: -0.4px;"></div>
             <div style="font-size: 44px; line-height: 1; color: var(--p); opacity: 0.25; font-family: Georgia, serif; margin-top: -24px; margin-bottom: 16px; text-align: right; font-weight: 900;">”</div>
             <div id="quote-popup-author" style="font-size: 13px; color: var(--txt2); margin-bottom: 32px; font-weight: 700; letter-spacing: 0.5px;"></div>
-            <button class="btn btn-primary" style="margin: 0 auto; display: flex; padding: 12px 32px; border-radius: 14px; font-size: 12px; font-weight: 800; box-shadow: 0 4px 14px var(--p-glow); letter-spacing: 0.5px;" onclick="closeModals()">시작하기</button>
+            <div style="display: flex; gap: 12px; justify-content: center; margin-top: 10px;">
+                <button class="btn btn-ghost" style="padding: 12px 24px; border-radius: 14px; font-size: 12px; font-weight: 800; border: 1.5px solid var(--border); display: flex; align-items: center; gap: 6px;" onclick="copyCurrentPopupQuote()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="9" y="9" width="13" height="13" rx="2"/>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                    </svg>
+                    복사하기
+                </button>
+                <button class="btn btn-primary" style="padding: 12px 32px; border-radius: 14px; font-size: 12px; font-weight: 800; box-shadow: 0 4px 14px var(--p-glow); letter-spacing: 0.5px;" onclick="closeModals()">시작하기</button>
+            </div>
         </div>
     </div>
 
