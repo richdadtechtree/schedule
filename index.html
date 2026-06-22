@@ -7104,7 +7104,10 @@
             }
 
             const card = document.getElementById('memo-view-card');
-            card.style.background = m.color || 'var(--surface)';
+            const isDark = document.documentElement.hasAttribute('data-dark');
+            card.style.background = (isDark && m.color)
+                ? `linear-gradient(rgba(10,14,23,.88), rgba(10,14,23,.88)), ${m.color}`
+                : (m.color || 'var(--surface)');
 
             document.getElementById('memo-view-modal').classList.add('open');
         }
