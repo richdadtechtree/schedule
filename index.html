@@ -4830,8 +4830,9 @@
                 dataChanged = false;
 
                 if (dbMemos && dbMemos.length > 0) {
-                    const dbMemosRegular = dbMemos.filter(m => !m.id.startsWith('q_'));
+                    const dbMemosRegular = dbMemos.filter(m => !m.id.startsWith('q_') && !m.id.startsWith('bk_'));
                     const dbMemosQuotes = dbMemos.filter(m => m.id.startsWith('q_'));
+                    const dbMemosBooks = dbMemos.filter(m => m.id.startsWith('bk_'));
 
                     // 1. 일반 메모 처리
                     const dbMemosMap = new Map(dbMemosRegular.map(m => [m.id, m]));
@@ -4937,6 +4938,50 @@
 
                     if (!quotePopupShown && quotes.length > 0) {
                         showRandomQuotePopup();
+                    }
+
+                    // 3. 책갈피 처리
+                    const dbBooksMap = new Map(dbMemosBooks.map(b => [b.id, b]));
+                    const mergedBooks = [];
+                    const localBookIdsProcessed = new Set();
+                    const booksToUpload = [];
+
+                    for (const localBook of books) {
+                        const dbBook = dbBooksMap.get(localBook.id);
+                        if (dbBook) {
+                            mergedBooks.push({
+                                id: dbBook.id,
+                                title: dbBook.title,
+                                page: parseInt(dbBook.content, 10) || 0,
+                                createdAt: localBook.createdAt || dbBook.updated_at,
+                                updatedAt: dbBook.updated_at || new Date().toISOString()
+                            });
+                            localBookIdsProcessed.add(localBook.id);
+                        } else {
+                            mergedBooks.push(localBook);
+                            localBookIdsProcessed.add(localBook.id);
+                            booksToUpload.push(localBook);
+                        }
+                    }
+
+                    for (const dbBook of dbMemosBooks) {
+                        if (!localBookIdsProcessed.has(dbBook.id)) {
+                            mergedBooks.push({
+                                id: dbBook.id,
+                                title: dbBook.title,
+                                page: parseInt(dbBook.content, 10) || 0,
+                                createdAt: dbBook.updated_at,
+                                updatedAt: dbBook.updated_at || new Date().toISOString()
+                            });
+                        }
+                    }
+
+                    books = mergedBooks;
+                    localStorage.setItem('pne_books', JSON.stringify(books));
+
+                    if (booksToUpload.length > 0) {
+                        console.log(`[동기화] DB에 없는 책갈피 ${booksToUpload.length}개를 업로드합니다.`);
+                        booksToUpload.forEach(b => syncBookToSupabase(b));
                     }
 
                     dataChanged = true;
@@ -8640,6 +8685,7 @@
             save();
             render();
             closeModals();
+            syncBookToSupabase(b);
             showToast('책갈피가 저장되었습니다. 🔖', 'ok');
         }
         function deleteBook(id) {
@@ -8647,7 +8693,22 @@
             books = books.filter(x => x.id !== id);
             save();
             render();
+            deleteBookFromSupabase(id);
             showToast('책갈피가 삭제되었습니다.', 'ok');
+        }
+        async function syncBookToSupabase(b) {
+            if (!supabaseClient || !currentUser) return;
+            await syncMemoToSupabase({
+                id: b.id,
+                title: b.title || '',
+                content: String(b.page ?? 0),
+                checklist: '',
+                color: '#e0f7fa',
+                category: '책갈피'
+            });
+        }
+        async function deleteBookFromSupabase(id) {
+            await deleteMemoFromSupabase(id);
         }
         function renderBooksView() {
             const area = document.getElementById('v-books');
