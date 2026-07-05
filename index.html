@@ -8834,6 +8834,61 @@
             syncBookToSupabase(b);
         }
 
+        function editBookPageInline(event, bookId, oldPage) {
+            event.stopPropagation();
+            const span = event.currentTarget;
+            const container = span.parentElement;
+            
+            const input = document.createElement('input');
+            input.type = 'number';
+            input.value = oldPage;
+            input.min = '0';
+            input.style.width = '70px';
+            input.style.fontSize = '18px';
+            input.style.fontWeight = '900';
+            input.style.color = 'var(--p)';
+            input.style.border = '1px solid var(--p)';
+            input.style.borderRadius = '8px';
+            input.style.background = 'var(--surface2)';
+            input.style.outline = 'none';
+            input.style.padding = '2px 6px';
+            input.style.fontFamily = 'inherit';
+            input.style.textAlign = 'center';
+            
+            input.onclick = (e) => e.stopPropagation();
+            
+            const saveInline = () => {
+                const newPage = parseInt(input.value, 10);
+                if (isNaN(newPage) || newPage < 0) {
+                    container.replaceChild(span, input);
+                    return;
+                }
+                
+                const b = books.find(x => x.id === bookId);
+                if (b && b.page !== newPage) {
+                    b.page = newPage;
+                    b.updatedAt = new Date().toISOString();
+                    save();
+                    syncBookToSupabase(b);
+                }
+                render();
+            };
+            
+            input.onkeydown = (e) => {
+                if (e.key === 'Enter') {
+                    saveInline();
+                } else if (e.key === 'Escape') {
+                    container.replaceChild(span, input);
+                }
+            };
+            
+            input.onblur = saveInline;
+            
+            container.replaceChild(input, span);
+            input.focus();
+            input.select();
+        }
+
         function renderBooksView() {
             const area = document.getElementById('v-books');
             const search = searchQuery.toLowerCase();
@@ -8882,7 +8937,7 @@
           </div>
 
           <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; border-top: 1px solid var(--border2); padding-top: 10px;">
-            <span style="font-size: 20px; font-weight: 900; color: var(--p);">${b.page}p</span>
+            <span style="font-size: 20px; font-weight: 900; color: var(--p); cursor: pointer;" onclick="editBookPageInline(event, '${b.id}', ${b.page})" title="페이지 바로 수정">${b.page}p</span>
             <span style="font-size: 10px; color: var(--txt3);">${memoTimeAgo(b.updatedAt)}</span>
           </div>
         </div>`).join('') || '<div class="empty" style="grid-column:span 4">아직 기록된 책갈피가 없어요. <b>p</b> 키를 눌러 추가해보세요!</div>'}
