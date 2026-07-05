@@ -3905,6 +3905,79 @@
             float: right;
             margin-left: 6px;
         }
+
+        /* 책갈피 완독 포도알 스타일 */
+        .grape-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 12px 0 4px 0;
+            padding: 10px;
+            background: var(--surface2);
+            border-radius: 14px;
+            border: 1px dashed var(--border);
+        }
+        .grape-header {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--txt2);
+            margin-bottom: 8px;
+        }
+        .grape-cluster {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+        .grape-row {
+            display: flex;
+            gap: 5px;
+        }
+        .grape-dot {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            background: rgba(139, 92, 246, 0.08);
+            border: 1.5px solid var(--border);
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+        }
+        .grape-dot:hover {
+            transform: scale(1.25);
+            background: rgba(139, 92, 246, 0.25);
+            border-color: #8b5cf6;
+        }
+        .grape-dot.active {
+            background: radial-gradient(circle at 35% 35%, #c084fc, #8b5cf6);
+            border-color: #7c3aed;
+            box-shadow: 0 0 10px rgba(139, 92, 246, 0.8);
+        }
+        .grape-dot.active::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 4px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 50%;
+        }
+        .grape-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(139, 92, 246, 0.15);
+            color: #8b5cf6;
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            border-radius: 8px;
+            padding: 2px 6px;
+            font-size: 10px;
+            font-weight: 800;
+        }
     </style>
 </head>
 
@@ -4949,10 +5022,16 @@
                     for (const localBook of books) {
                         const dbBook = dbBooksMap.get(localBook.id);
                         if (dbBook) {
+                            const parts = String(dbBook.content || '').split('::');
+                            const page = parseInt(parts[0], 10) || 0;
+                            const completions = parseInt(parts[1], 10) || 0;
+                            const grapes = parseInt(parts[2], 10) || 0;
                             mergedBooks.push({
                                 id: dbBook.id,
                                 title: dbBook.title,
-                                page: parseInt(dbBook.content, 10) || 0,
+                                page: page,
+                                completions: completions,
+                                grapes: grapes,
                                 createdAt: localBook.createdAt || dbBook.updated_at,
                                 updatedAt: dbBook.updated_at || new Date().toISOString()
                             });
@@ -4966,10 +5045,16 @@
 
                     for (const dbBook of dbMemosBooks) {
                         if (!localBookIdsProcessed.has(dbBook.id)) {
+                            const parts = String(dbBook.content || '').split('::');
+                            const page = parseInt(parts[0], 10) || 0;
+                            const completions = parseInt(parts[1], 10) || 0;
+                            const grapes = parseInt(parts[2], 10) || 0;
                             mergedBooks.push({
                                 id: dbBook.id,
                                 title: dbBook.title,
-                                page: parseInt(dbBook.content, 10) || 0,
+                                page: page,
+                                completions: completions,
+                                grapes: grapes,
                                 createdAt: dbBook.updated_at,
                                 updatedAt: dbBook.updated_at || new Date().toISOString()
                             });
@@ -5300,6 +5385,10 @@
         // 기존 기기에 남아있던 기본 셋팅 데이터(q1~q9)를 제거합니다.
         quotes = quotes.filter(q => !['q1', 'q2', 'q3', 'q4', 'q5', 'q6', 'q7', 'q8', 'q9'].includes(q.id));
         let books = JSON.parse(localStorage.getItem('pne_books') || '[]');
+        books.forEach(b => {
+            if (b.completions === undefined) b.completions = 0;
+            if (b.grapes === undefined) b.grapes = 0;
+        });
         let localCatUpdatedAt = localStorage.getItem('pne_cat_updated_at') || new Date(0).toISOString();
         let pinnedMemoIds = new Set(JSON.parse(localStorage.getItem('pne_pinned_memos') || '[]'));
         const MEMO_COLORS = ['#fffde7', '#e8f5e9', '#e3f2fd', '#fce4ec', '#f3e5f5', '#e0f7fa'];
@@ -8634,6 +8723,8 @@
             document.getElementById('bk-id').value = '';
             document.getElementById('bk-title').value = '';
             document.getElementById('bk-page').value = '';
+            document.getElementById('bk-completions').value = '0';
+            document.getElementById('bk-grapes').value = '0';
             document.getElementById('bk-existing-hint').style.display = 'none';
             document.getElementById('book-modal-title').textContent = '🔖 책갈피 기록';
             if (id) {
@@ -8642,6 +8733,8 @@
                     document.getElementById('bk-id').value = b.id;
                     document.getElementById('bk-title').value = b.title;
                     document.getElementById('bk-page').value = b.page;
+                    document.getElementById('bk-completions').value = b.completions || 0;
+                    document.getElementById('bk-grapes').value = b.grapes || 0;
                     document.getElementById('book-modal-title').textContent = '🔖 책갈피 수정';
                 }
             }
@@ -8660,6 +8753,8 @@
             if (existing) {
                 idInput.value = existing.id;
                 document.getElementById('bk-page').value = existing.page;
+                document.getElementById('bk-completions').value = existing.completions || 0;
+                document.getElementById('bk-grapes').value = existing.grapes || 0;
                 hint.style.display = 'block';
             } else {
                 hint.style.display = 'none';
@@ -8669,6 +8764,8 @@
             const id = document.getElementById('bk-id').value;
             const title = document.getElementById('bk-title').value.trim();
             const page = parseInt(document.getElementById('bk-page').value, 10);
+            const completions = parseInt(document.getElementById('bk-completions').value, 10) || 0;
+            const grapes = parseInt(document.getElementById('bk-grapes').value, 10) || 0;
             if (!title) { showToast('책 제목을 입력해 주세요.', 'err'); return; }
             if (isNaN(page) || page < 0) { showToast('페이지를 올바르게 입력해 주세요.', 'err'); return; }
 
@@ -8677,9 +8774,11 @@
             if (b) {
                 b.title = title;
                 b.page = page;
+                b.completions = completions;
+                b.grapes = grapes;
                 b.updatedAt = now;
             } else {
-                b = { id: 'bk_' + Date.now(), title, page, createdAt: now, updatedAt: now };
+                b = { id: 'bk_' + Date.now(), title, page, completions, grapes, createdAt: now, updatedAt: now };
                 books.push(b);
             }
             save();
@@ -8701,7 +8800,7 @@
             await syncMemoToSupabase({
                 id: b.id,
                 title: b.title || '',
-                content: String(b.page ?? 0),
+                content: String(b.page ?? 0) + '::' + (b.completions || 0) + '::' + (b.grapes || 0),
                 checklist: '',
                 color: '#e0f7fa',
                 category: '책갈피'
@@ -8710,6 +8809,31 @@
         async function deleteBookFromSupabase(id) {
             await deleteMemoFromSupabase(id);
         }
+        
+        function toggleBookGrape(bookId, grapeIndex) {
+            const b = books.find(x => x.id === bookId);
+            if (!b) return;
+            
+            let newGrapes = grapeIndex + 1;
+            if (b.grapes === newGrapes) {
+                newGrapes = grapeIndex;
+            }
+            
+            b.grapes = newGrapes;
+            b.updatedAt = new Date().toISOString();
+            
+            if (b.grapes === 10) {
+                b.completions = (b.completions || 0) + 1;
+                b.grapes = 0;
+                showToast(`🎉 완독 성공! "${b.title}"을 완독하여 포도송이를 완성했습니다! 🍇`, 'ok');
+            } else {
+                showToast(`포도알을 채웠습니다! (${b.grapes}/10) 🍇`);
+            }
+            save();
+            render();
+            syncBookToSupabase(b);
+        }
+
         function renderBooksView() {
             const area = document.getElementById('v-books');
             const search = searchQuery.toLowerCase();
@@ -8725,12 +8849,38 @@
     </div>
     <div class="memos-view-grid" style="grid-template-columns: repeat(auto-fill, minmax(240px, 1fr))">
       ${fBooks.map(b => `
-        <div class="memo-card animate" style="background:var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--p); display: flex; flex-direction: column; justify-content: space-between; min-height: 130px; padding: 20px 22px; box-shadow: var(--shadow); border-radius: 20px;">
-          <div class="mc-actions" style="margin-bottom: 8px;">
-            <button onclick="event.stopPropagation();openBookModal('${b.id}')" title="편집"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2-2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-            <button onclick="event.stopPropagation();deleteBook('${b.id}')" title="삭제" style="color:var(--danger)"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>
+        <div class="memo-card animate" style="background:var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--p); display: flex; flex-direction: column; justify-content: space-between; min-height: 220px; padding: 20px 22px; box-shadow: var(--shadow); border-radius: 20px;">
+          <div class="mc-actions" style="margin-bottom: 8px; display:flex; justify-content:space-between; align-items:center; width:100%">
+            ${(b.completions || 0) > 0 ? `<span class="grape-badge">🍇 완독 ${b.completions}회</span>` : '<span></span>'}
+            <div style="display:flex; gap:4px">
+              <button onclick="event.stopPropagation();openBookModal('${b.id}')" title="편집"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2-2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+              <button onclick="event.stopPropagation();deleteBook('${b.id}')" title="삭제" style="color:var(--danger)"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>
+            </div>
           </div>
-          <div style="font-size: 15px; font-weight: 800; line-height: 1.5; color: var(--txt); word-break: keep-all; margin-bottom: 14px;">${b.title}</div>
+          <div style="font-size: 15px; font-weight: 800; line-height: 1.5; color: var(--txt); word-break: keep-all; margin-bottom: 8px;">${b.title}</div>
+          
+          <!-- 포도송이 UI -->
+          <div class="grape-container" onclick="event.stopPropagation()">
+            <div class="grape-header">
+              <span>🍇 포도송이</span>
+              <span>${b.grapes || 0}/10</span>
+            </div>
+            <div class="grape-cluster">
+              <div class="grape-row">
+                ${[0, 1, 2, 3].map(i => `<div class="grape-dot ${b.grapes > i ? 'active' : ''}" onclick="toggleBookGrape('${b.id}', ${i})" title="${i + 1}번째 포도알"></div>`).join('')}
+              </div>
+              <div class="grape-row">
+                ${[4, 5, 6].map(i => `<div class="grape-dot ${b.grapes > i ? 'active' : ''}" onclick="toggleBookGrape('${b.id}', ${i})" title="${i + 1}번째 포도알"></div>`).join('')}
+              </div>
+              <div class="grape-row">
+                ${[7, 8].map(i => `<div class="grape-dot ${b.grapes > i ? 'active' : ''}" onclick="toggleBookGrape('${b.id}', ${i})" title="${i + 1}번째 포도알"></div>`).join('')}
+              </div>
+              <div class="grape-row">
+                ${[9].map(i => `<div class="grape-dot ${b.grapes > i ? 'active' : ''}" onclick="toggleBookGrape('${b.id}', ${i})" title="${i + 1}번째 포도알"></div>`).join('')}
+              </div>
+            </div>
+          </div>
+
           <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; border-top: 1px solid var(--border2); padding-top: 10px;">
             <span style="font-size: 20px; font-weight: 900; color: var(--p);">${b.page}p</span>
             <span style="font-size: 10px; color: var(--txt3);">${memoTimeAgo(b.updatedAt)}</span>
@@ -9071,6 +9221,18 @@
                     <label>현재 페이지</label>
                     <input type="number" id="bk-page" min="0" placeholder="예) 128"
                         style="width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid var(--border2);font-size:13px;background:var(--surface2);color:var(--txt);outline:none;font-family:'Pretendard';">
+                </div>
+                <div style="display:flex;gap:10px">
+                    <div class="form-field" style="flex:1">
+                        <label>완독 횟수</label>
+                        <input type="number" id="bk-completions" min="0" placeholder="0"
+                            style="width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid var(--border2);font-size:13px;background:var(--surface2);color:var(--txt);outline:none;font-family:'Pretendard';">
+                    </div>
+                    <div class="form-field" style="flex:1">
+                        <label>포도알 개수 (0~9)</label>
+                        <input type="number" id="bk-grapes" min="0" max="9" placeholder="0"
+                            style="width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid var(--border2);font-size:13px;background:var(--surface2);color:var(--txt);outline:none;font-family:'Pretendard';">
+                    </div>
                 </div>
                 <div id="bk-existing-hint" style="display:none;font-size:11.5px;color:var(--txt3);margin-top:-4px;">📖 기존 기록을 불러왔어요. 페이지만 수정하고 저장하면 돼요.</div>
                 <button class="btn btn-primary" style="justify-content:center;padding:12px;font-weight:700;" onclick="saveBook()">💾 저장하기</button>
