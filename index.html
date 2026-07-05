@@ -8825,7 +8825,7 @@
             if (b.grapes === 10) {
                 b.completions = (b.completions || 0) + 1;
                 b.grapes = 0;
-                showToast(`🎉 완독 성공! "${b.title}"을 완독하여 포도송이를 완성했습니다! 🍇`, 'ok');
+                showToast(`🎉 완독 성공! "${b.title}"을 완독하여 완독체크를 완성했습니다! 🍇`, 'ok');
             } else {
                 showToast(`포도알을 채웠습니다! (${b.grapes}/10) 🍇`);
             }
@@ -8914,10 +8914,10 @@
           </div>
           <div style="font-size: 15px; font-weight: 800; line-height: 1.5; color: var(--txt); word-break: keep-all; margin-bottom: 8px;">${b.title}</div>
           
-          <!-- 포도송이 UI -->
+          <!-- 완독체크 UI -->
           <div class="grape-container" onclick="event.stopPropagation()">
             <div class="grape-header">
-              <span>🍇 포도송이</span>
+              <span>🍇 완독체크</span>
               <span>${b.grapes || 0}/10</span>
             </div>
             <div class="grape-cluster">
