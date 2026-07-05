@@ -723,25 +723,14 @@
 
         @media (min-width: 769px) {
             .sidebar {
-                transform: translateX(calc(-1 * var(--sidebar) + 20px));
-                box-shadow: none;
-                transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+                transform: none !important;
+                box-shadow: var(--shadow) !important;
             }
             .sidebar::after {
-                content: '';
-                position: absolute;
-                top: 0;
-                right: -20px;
-                width: 20px;
-                height: 100%;
-                cursor: pointer;
-            }
-            .sidebar:hover {
-                transform: translateX(0);
-                box-shadow: var(--shadow-lg);
+                display: none !important;
             }
             .main {
-                margin-left: 48px;
+                margin-left: calc(var(--sidebar) + 24px) !important;
                 padding: 12px;
             }
         }
@@ -3978,6 +3967,32 @@
             font-size: 10px;
             font-weight: 800;
         }
+
+        /* HEADER NAV STYLE */
+        .header-nav {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            gap: 6px;
+            overflow-x: auto;
+            flex: 1;
+            justify-content: center;
+            padding: 0 12px;
+            scrollbar-width: none;
+        }
+        .header-nav::-webkit-scrollbar {
+            display: none;
+        }
+        .header-nav .nav-item {
+            margin-bottom: 0;
+            padding: 8px 14px;
+            font-size: 12px;
+            border-radius: 12px;
+            white-space: nowrap;
+        }
+        .header-nav .nav-item:hover {
+            transform: translateY(-2px) !important;
+        }
     </style>
 </head>
 
@@ -4044,65 +4059,109 @@
 
     <!-- SIDEBAR -->
     <aside class="sidebar">
-        <div class="logo">
-            <div class="logo-icon">✨</div>
-            vibe.
+        <!-- Auth Profile (Google Login UI) -->
+        <div id="auth-container" class="auth-container" style="width: 100%; margin-bottom: 20px;">
+            <!-- Auth UI will be rendered here -->
         </div>
 
-        <div class="nav-group-label">메뉴</div>
-        <nav id="nav-menu">
-            <div class="nav-item active" onclick="switchView('overview')"><svg width="14" height="14"
-                    viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"
+        <!-- Weather Chip -->
+        <div class="weather-chip" style="width: 100%; justify-content: center; margin-bottom: 8px;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="5" />
+                <line x1="12" y1="1" x2="12" y2="3" />
+                <line x1="12" y1="21" x2="12" y2="23" />
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                <line x1="1" y1="12" x2="3" y2="12" />
+                <line x1="21" y1="12" x2="23" y2="12" />
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+            </svg>
+            <span id="weather-loc" style="font-weight:800;margin-right:4px;font-size:10px;color:var(--txt)">불러오는 중...</span>
+            <span class="temp" id="weather-temp">--°C</span>
+            <span style="color:var(--border2)">|</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9.59 4.59A2 2 0 1 1 11 8H2" />
+                <path d="M12.59 19.41A2 2 0 1 0 14 16H2" />
+                <path d="M6.59 11.41A2 2 0 1 0 8 8H2" />
+            </svg>
+            <span class="aqi" id="weather-aqi">좋음</span>
+        </div>
+
+        <!-- Date and Time -->
+        <div class="live-time" style="width: 100%; justify-content: center; margin-bottom: 16px;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+            </svg>
+            <span id="live-time"></span>
+        </div>
+
+        <!-- Search Bar -->
+        <div class="search-container" style="position: relative; width: 100%; margin-bottom: 14px;">
+            <span class="search-icon" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--txt3); font-size: 11px; pointer-events: none;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg></span>
+            <input class="search-input" type="text" placeholder="검색..." oninput="handleSearch(this.value)" id="search-box" style="width: 100%; padding: 7px 10px 7px 30px; border-radius: 20px; border: 1px solid var(--border2); background: var(--surface2); font-size: 11px; color: var(--txt); outline: none; transition: all .18s;">
+        </div>
+
+        <!-- Pomodoro Timer -->
+        <div class="pomo-chip" style="width: 100%; justify-content: center; margin-bottom: 14px;">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="9" />
+                <polyline points="12 7 12 12 15 15" />
+                <line x1="9" y1="1" x2="15" y2="1" />
+            </svg>
+            <span id="pomo-display" onclick="setPomoDuration()" style="cursor:pointer" title="시간 설정">25:00</span>
+            <span id="pomo-reset" onclick="resetPomo()" title="리셋" style="cursor:pointer;margin-right:4px"><svg
+                    width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M23 4v6h-6" />
+                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+                </svg></span>
+            <span id="pomo-play" onclick="startPomo()" title="시작" style="cursor:pointer"><svg width="11"
+                    height="11" viewBox="0 0 24 24" fill="currentColor">
+                    <polygon points="5 3 19 12 5 21 5 3" />
+                </svg></span>
+            <span id="pomo-pause" onclick="pausePomo()" title="정지" style="cursor:pointer;display:none"><svg
+                    width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
+                    <rect x="6" y="4" width="4" height="16" />
+                    <rect x="14" y="4" width="4" height="16" />
+                </svg></span>
+            <span onclick="resetPomo()" title="리셋" style="cursor:pointer;opacity:.6"><svg width="10" height="10"
+                    viewBox="0 0 24 24" fill="currentColor">
+                    <rect x="4" y="4" width="16" height="16" rx="2" />
+                </svg></span>
+        </div>
+
+        <!-- Quick Action Buttons -->
+        <div style="display: flex; gap: 6px; width: 100%; margin-bottom: 16px;">
+            <button class="btn btn-ghost" onclick="triggerSmartPaste()" style="padding: 8px; flex: 1; justify-content: center;" title="클립보드 가져오기"><svg width="13"
+                    height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+                    <rect x="8" y="2" width="8" height="4" rx="1" />
+                    <polyline points="12 11 12 17" />
+                    <polyline points="9 14 12 17 15 14" />
+                </svg></button>
+            <button class="btn btn-warn" onclick="openMemoModal()" style="flex: 2; justify-content: center; font-size: 11px; padding: 8px;"><svg width="13" height="13" viewBox="0 0 24 24"
+                    fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"
                     stroke-linejoin="round">
-                    <rect x="3" y="3" width="7" height="7" rx="1" />
-                    <rect x="14" y="3" width="7" height="7" rx="1" />
-                    <rect x="3" y="14" width="7" height="7" rx="1" />
-                    <rect x="14" y="14" width="7" height="7" rx="1" />
-                </svg> 대시보드</div>
-            <div class="nav-item" onclick="switchView('kanban')"><svg width="14" height="14" viewBox="0 0 24 24"
-                    fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="3" y="3" width="5" height="18" rx="1" />
-                    <rect x="10" y="3" width="5" height="12" rx="1" />
-                    <rect x="17" y="3" width="5" height="15" rx="1" />
-                </svg> 칸반 워크플로우</div>
-            <div class="nav-item" onclick="switchView('matrix')"><svg width="14" height="14" viewBox="0 0 24 24"
-                    fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="3" y="3" width="18" height="18" rx="2" />
-                    <line x1="12" y1="3" x2="12" y2="21" />
-                    <line x1="3" y1="12" x2="21" y2="12" />
-                </svg> 전략 매트릭스</div>
-            <div class="nav-item" onclick="switchView('memos')"><svg width="14" height="14" viewBox="0 0 24 24"
-                    fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                     <polyline points="14 2 14 8 20 8" />
                     <line x1="8" y1="13" x2="16" y2="13" />
-                    <line x1="8" y1="17" x2="13" y2="17" />
-                </svg> Smart Memo</div>
-            <div class="nav-item" onclick="switchView('quotes')"><svg width="14" height="14" viewBox="0 0 24 24"
-                    fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-                </svg> 좋은글 모음</div>
-            <div class="nav-item" onclick="switchView('books')"><svg width="14" height="14" viewBox="0 0 24 24"
-                    fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
-                </svg> 책갈피</div>
-            <div class="nav-item" onclick="switchView('analytics')"><svg width="14" height="14" viewBox="0 0 24 24"
-                    fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-                </svg> 리포트</div>
+                    <line x1="8" y1="17" x2="12" y2="17" />
+                </svg> Memo</button>
+            <button class="btn btn-primary" onclick="openTaskModal()" style="flex: 2; justify-content: center; font-size: 11px; padding: 8px;"><svg width="12" height="12"
+                    viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                </svg> Task</button>
+        </div>
 
-            <div class="nav-item" onclick="switchView('lecture')"><svg width="14" height="14" viewBox="0 0 24 24"
-                    fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
-                    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
-                </svg> 강의 진도</div>
-            <div class="nav-item" onclick="switchView('settings')"><svg width="14" height="14" viewBox="0 0 24 24"
-                    fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="12" r="3" />
-                    <path
-                        d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-                </svg> 시스템 설정</div>
-        </nav>
+        <div style="border-top: 1px solid var(--border2); margin: 8px 0; width: 100%;"></div>
 
         <!-- ASMR -->
         <div class="asmr-player" style="margin-top:12px">
@@ -4192,9 +4251,68 @@
     <div class="main">
         <!-- HEADER -->
         <header class="header">
-            <div class="header-left">
-                <!-- 모바일 햄버거 -->
-                <button class="icon-btn mobile-only" onclick="toggleSidebar()" aria-label="메뉴" style="flex-shrink:0">
+            <!-- Left Side: LOGO -->
+            <div class="logo" style="margin-bottom: 0; padding: 0;">
+                <div class="logo-icon" style="width: 32px; height: 32px; font-size: 14px; border-radius: 10px;">✨</div>
+                vibe.
+            </div>
+
+            <!-- Center Side: Navigation Menu (Moved from sidebar) -->
+            <nav id="nav-menu" class="header-nav">
+                <div class="nav-item active" onclick="switchView('overview')"><svg width="14" height="14"
+                        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <rect x="3" y="3" width="7" height="7" rx="1" />
+                        <rect x="14" y="3" width="7" height="7" rx="1" />
+                        <rect x="3" y="14" width="7" height="7" rx="1" />
+                        <rect x="14" y="14" width="7" height="7" rx="1" />
+                    </svg> 대시보드</div>
+                <div class="nav-item" onclick="switchView('kanban')"><svg width="14" height="14" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="5" height="18" rx="1" />
+                        <rect x="10" y="3" width="5" height="12" rx="1" />
+                        <rect x="17" y="3" width="5" height="15" rx="1" />
+                    </svg> 칸반 워크플로우</div>
+                <div class="nav-item" onclick="switchView('matrix')"><svg width="14" height="14" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="2" />
+                        <line x1="12" y1="3" x2="12" y2="21" />
+                        <line x1="3" y1="12" x2="21" y2="12" />
+                    </svg> 전략 매트릭스</div>
+                <div class="nav-item" onclick="switchView('memos')"><svg width="14" height="14" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                        <line x1="8" y1="13" x2="16" y2="13" />
+                        <line x1="8" y1="17" x2="13" y2="17" />
+                    </svg> Smart Memo</div>
+                <div class="nav-item" onclick="switchView('quotes')"><svg width="14" height="14" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                    </svg> 좋은글 모음</div>
+                <div class="nav-item" onclick="switchView('books')"><svg width="14" height="14" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                    </svg> 책갈피</div>
+                <div class="nav-item" onclick="switchView('analytics')"><svg width="14" height="14" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+                    </svg> 리포트</div>
+                <div class="nav-item" onclick="switchView('lecture')"><svg width="14" height="14" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+                        <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+                    </svg> 강의 진도</div>
+                <div class="nav-item" onclick="switchView('settings')"><svg width="14" height="14" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="3" />
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                    </svg> 시스템 설정</div>
+            </nav>
+
+            <!-- Right Side: Mobile hamburger trigger -->
+            <div class="header-right mobile-only" style="gap:10px">
+                <button class="icon-btn" onclick="toggleSidebar()" aria-label="메뉴" style="flex-shrink:0">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
                         stroke-linecap="round">
                         <line x1="3" y1="6" x2="21" y2="6" />
@@ -4202,111 +4320,6 @@
                         <line x1="3" y1="18" x2="21" y2="18" />
                     </svg>
                 </button>
-                <!-- 모바일 검색 -->
-                <button class="icon-btn mobile-only" onclick="toggleMobileSearch(true)" aria-label="검색">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-                        stroke-linecap="round">
-                        <circle cx="11" cy="11" r="8" />
-                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                    </svg>
-                </button>
-                <div class="weather-chip">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.2"
-                        stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="5" />
-                        <line x1="12" y1="1" x2="12" y2="3" />
-                        <line x1="12" y1="21" x2="12" y2="23" />
-                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
-                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-                        <line x1="1" y1="12" x2="3" y2="12" />
-                        <line x1="21" y1="12" x2="23" y2="12" />
-                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
-                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-                    </svg>
-                    <span id="weather-loc" style="font-weight:800;margin-right:4px;font-size:10px;color:var(--txt)">불러오는
-                        중...</span>
-                    <span class="temp" id="weather-temp">--°C</span>
-                    <span style="color:var(--border2)">|</span>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.2"
-                        stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M9.59 4.59A2 2 0 1 1 11 8H2" />
-                        <path d="M12.59 19.41A2 2 0 1 0 14 16H2" />
-                        <path d="M6.59 11.41A2 2 0 1 0 8 8H2" />
-                    </svg>
-                    <span class="aqi" id="weather-aqi">좋음</span>
-                </div>
-                <div class="live-time">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-                        stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="10" />
-                        <polyline points="12 6 12 12 16 14" />
-                    </svg>
-                    <span id="live-time"></span>
-                </div>
-            </div>
-            <div class="header-mid desktop-only">
-                <span class="search-icon"><svg width="11" height="11" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="11" cy="11" r="8" />
-                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                    </svg></span>
-                <input class="search-input" type="text" placeholder="검색..." oninput="handleSearch(this.value)"
-                    id="search-box">
-            </div>
-            <div class="header-right">
-                <div class="pomo-chip">
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-                        stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="9" />
-                        <polyline points="12 7 12 12 15 15" />
-                        <line x1="9" y1="1" x2="15" y2="1" />
-                    </svg>
-                    <span id="pomo-display" onclick="setPomoDuration()" style="cursor:pointer"
-                        title="시간 설정">25:00</span>
-                    <span id="pomo-reset" onclick="resetPomo()" title="리셋" style="cursor:pointer;margin-right:4px"><svg
-                            width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M23 4v6h-6" />
-                            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
-                        </svg></span>
-                    <span id="pomo-play" onclick="startPomo()" title="시작" style="cursor:pointer"><svg width="11"
-                            height="11" viewBox="0 0 24 24" fill="currentColor">
-                            <polygon points="5 3 19 12 5 21 5 3" />
-                        </svg></span>
-                    <span id="pomo-pause" onclick="pausePomo()" title="정지" style="cursor:pointer;display:none"><svg
-                            width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
-                            <rect x="6" y="4" width="4" height="16" />
-                            <rect x="14" y="4" width="4" height="16" />
-                        </svg></span>
-                    <span onclick="resetPomo()" title="리셋" style="cursor:pointer;opacity:.6"><svg width="10" height="10"
-                            viewBox="0 0 24 24" fill="currentColor">
-                            <rect x="4" y="4" width="16" height="16" rx="2" />
-                        </svg></span>
-                </div>
-                <button class="btn btn-ghost" onclick="triggerSmartPaste()" title="클립보드 가져오기"><svg width="13"
-                        height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-                        stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
-                        <rect x="8" y="2" width="8" height="4" rx="1" />
-                        <polyline points="12 11 12 17" />
-                        <polyline points="9 14 12 17 15 14" />
-                    </svg></button>
-                <button class="btn btn-warn" onclick="openMemoModal()"><svg width="13" height="13" viewBox="0 0 24 24"
-                        fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"
-                        stroke-linejoin="round">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                        <polyline points="14 2 14 8 20 8" />
-                        <line x1="8" y1="13" x2="16" y2="13" />
-                        <line x1="8" y1="17" x2="12" y2="17" />
-                    </svg> Memo</button>
-                <button class="btn btn-primary" onclick="openTaskModal()"><svg width="12" height="12"
-                        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-                        <line x1="12" y1="5" x2="12" y2="19" />
-                        <line x1="5" y1="12" x2="19" y2="12" />
-                    </svg> Task</button>
-                <div id="auth-container" class="auth-container">
-                    <!-- Auth UI will be rendered here -->
-                </div>
             </div>
         </header>
 
