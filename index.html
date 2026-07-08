@@ -1135,7 +1135,7 @@
             display: grid;
             grid-template-columns: 240px 1fr;
             gap: 12px;
-            height: 100%
+            height: auto;
         }
 
         .left-col {
@@ -1352,7 +1352,6 @@
 
         /* TASK CARDS */
         .tasks-section {
-            flex: 1;
             min-height: 0
         }
 
@@ -4252,7 +4251,7 @@
                     <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
                 </svg> 시스템 설정</div>
             <div class="sidebar-version" style="margin-top: 8px; padding: 6px 8px 0; border-top: 1px dashed var(--border2); display: flex; justify-content: space-between; font-size: 9px; color: var(--txt3); font-weight: 700; opacity: 0.8;">
-                <span>v1.6.3</span>
+                <span>v1.6.4</span>
                 <span>2026-07-09</span>
             </div>
         </div>
@@ -4513,11 +4512,9 @@
                         <input type="checkbox" id="m-has-checklist"
                             style="width:14px;height:14px;accent-color:var(--p);cursor:pointer;flex-shrink:0"
                             onclick="event.stopPropagation();toggleChecklistField(this.checked)">
-                        <span style="font-size:11px;font-weight:600;color:var(--txt2);user-select:none">✅ Checklist
-                            mode</span>
+                        <span style="font-size:11px;font-weight:600;color:var(--txt2);user-select:none">✅ Checklist mode</span>
                     </div>
-                    <textarea id="m-checklist" rows="4" placeholder="항목 입력 (엔터로 구분)&#10;예) 준비서면 작성&#10;예) 증거자료 정리"
-                        style="display:none;margin-top:8px" oninput="onMemoFieldInput(true)" onkeydown="handleMemoModalKeydown(event)"></textarea>
+                    <div id="m-checklist-inputs-container" style="display:none;margin-top:8px;flex-direction:column;gap:8px"></div>
                 </div>
                 <input type="hidden" id="m-id">
                 <button class="btn btn-warn" style="justify-content:center;padding:11px" onclick="saveMemo()">💾 Save
@@ -6057,11 +6054,15 @@
                     const clChecks = checklistItems[m.id] || [];
                     const clDone = clItems.filter((_, i) => clChecks[i]).length;
                     const clPct = clItems.length ? Math.round(clDone / clItems.length * 100) : 0;
+                    
+                    const itemsWithState = clItems.map((item, ci) => ({ item, index: ci, checked: !!clChecks[ci] }));
+                    itemsWithState.sort((a, b) => a.checked - b.checked);
+
                     return `<div class="mc-checklist">
-                  ${clItems.map((item, ci) => `
-                    <label class="mc-checklist-item${clChecks[ci] ? ' checked-item' : ''}" data-cl="${m.id}-${ci}" onclick="event.stopPropagation()">
-                      <input type="checkbox" ${clChecks[ci] ? 'checked' : ''} onchange="toggleCheckItem('${m.id}',${ci},this.checked)" onclick="event.stopPropagation()">
-                      <span>${item}</span>
+                  ${itemsWithState.map((x) => `
+                    <label class="mc-checklist-item${x.checked ? ' checked-item' : ''}" data-cl="${m.id}-${x.index}" onclick="event.stopPropagation()">
+                      <input type="checkbox" ${x.checked ? 'checked' : ''} onchange="toggleCheckItem('${m.id}',${x.index},this.checked)" onclick="event.stopPropagation()">
+                      <span>${x.item}</span>
                     </label>`).join('')}
                   <div class="cl-progress">
                     <div class="cl-progress-bar"><div class="cl-progress-fill" data-cl-fill="${m.id}" style="width:${clPct}%"></div></div>
@@ -7057,11 +7058,19 @@
         const MEMO_DRAFT_KEY = 'pne_memo_draft';
         let memoDraftTimer = null;
         function getMemoFormState() {
+            const cb = document.getElementById('m-has-checklist');
+            let checklist = '';
+            if (cb && cb.checked) {
+                checklist = Array.from(document.querySelectorAll('.m-checklist-item-input'))
+                    .map(inp => inp.value.trim())
+                    .filter(Boolean)
+                    .join('\n');
+            }
             return {
                 id: document.getElementById('m-id').value || 'new',
                 title: document.getElementById('m-title').value,
                 content: document.getElementById('m-content').value,
-                checklist: document.getElementById('m-checklist').value,
+                checklist: checklist,
                 color: document.getElementById('m-color').value,
                 category: document.getElementById('m-cat') ? document.getElementById('m-cat').value : ''
             };
@@ -7071,6 +7080,63 @@
         }
         function clearMemoDraft() {
             localStorage.removeItem(MEMO_DRAFT_KEY);
+        }
+        function addChecklistItemRow(val = '') {
+            const container = document.getElementById('m-checklist-inputs-container');
+            const newRow = document.createElement('div');
+            newRow.className = 'm-checklist-row';
+            newRow.style.display = 'flex';
+            newRow.style.alignItems = 'center';
+            newRow.style.gap = '8px';
+            newRow.innerHTML = `
+                <span style="color:var(--txt3);font-size:12px;user-select:none">●</span>
+                <input type="text" class="m-checklist-item-input" value="${escStr(val)}" placeholder="항목 입력" style="flex:1" onkeydown="handleChecklistItemKeydown(event, this)" oninput="onMemoFieldInput()">
+                <button type="button" onclick="removeChecklistItemRow(this)" style="background:transparent;border:none;color:var(--danger);cursor:pointer;padding:4px;font-size:12px">✕</button>
+            `;
+            container.appendChild(newRow);
+        }
+        function removeChecklistItemRow(button) {
+            const row = button.closest('.m-checklist-row');
+            const container = document.getElementById('m-checklist-inputs-container');
+            row.remove();
+            if (container.querySelectorAll('.m-checklist-row').length === 0) {
+                addChecklistItemRow('');
+            }
+            onMemoFieldInput();
+        }
+        function handleChecklistItemKeydown(e, input) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const row = input.closest('.m-checklist-row');
+                const newRow = document.createElement('div');
+                newRow.className = 'm-checklist-row';
+                newRow.style.display = 'flex';
+                newRow.style.alignItems = 'center';
+                newRow.style.gap = '8px';
+                newRow.innerHTML = `
+                    <span style="color:var(--txt3);font-size:12px;user-select:none">●</span>
+                    <input type="text" class="m-checklist-item-input" placeholder="항목 입력" style="flex:1" onkeydown="handleChecklistItemKeydown(event, this)" oninput="onMemoFieldInput()">
+                    <button type="button" onclick="removeChecklistItemRow(this)" style="background:transparent;border:none;color:var(--danger);cursor:pointer;padding:4px;font-size:12px">✕</button>
+                `;
+                row.insertAdjacentElement('afterend', newRow);
+                newRow.querySelector('.m-checklist-item-input').focus();
+                onMemoFieldInput();
+            } else if (e.key === 'Backspace' && input.value === '') {
+                e.preventDefault();
+                const row = input.closest('.m-checklist-row');
+                const prevRow = row.previousElementSibling;
+                if (prevRow && prevRow.classList.contains('m-checklist-row')) {
+                    const prevInput = prevRow.querySelector('.m-checklist-item-input');
+                    if (prevInput) {
+                        prevInput.focus();
+                        const val = prevInput.value;
+                        prevInput.value = '';
+                        prevInput.value = val;
+                    }
+                    row.remove();
+                    onMemoFieldInput();
+                }
+            }
         }
         function restoreMemoDraftIfAny(targetId) {
             let draft;
@@ -7082,8 +7148,12 @@
             if (draft.color) { document.getElementById('m-color').value = draft.color; renderColorPicker(draft.color); }
             if (draft.category && document.getElementById('m-cat')) document.getElementById('m-cat').value = draft.category;
             if (draft.checklist) {
-                document.getElementById('m-checklist').value = draft.checklist;
-                document.getElementById('m-checklist').style.display = 'block';
+                const container = document.getElementById('m-checklist-inputs-container');
+                container.innerHTML = '';
+                draft.checklist.split('\n').filter(Boolean).forEach(itemText => {
+                    addChecklistItemRow(itemText);
+                });
+                container.style.display = 'flex';
                 document.getElementById('m-has-checklist').checked = true;
             }
             showToast('✏️ 작성 중이던 내용을 불러왔어요', 'ok');
@@ -7101,7 +7171,7 @@
             el.textContent = `${len.toLocaleString()}자`;
         }
         function autosizeMemoTextareas() {
-            ['m-content', 'm-checklist'].forEach(id => {
+            ['m-content'].forEach(id => {
                 const ta = document.getElementById(id);
                 if (!ta) return;
                 ta.style.height = 'auto';
@@ -7146,8 +7216,8 @@
             document.getElementById('m-color').value = '';
             const cb = document.getElementById('m-has-checklist');
             cb.checked = false;
-            document.getElementById('m-checklist').style.display = 'none';
-            document.getElementById('m-checklist').value = '';
+            document.getElementById('m-checklist-inputs-container').innerHTML = '';
+            document.getElementById('m-checklist-inputs-container').style.display = 'none';
             renderColorPicker('');
             renderMemoCatSelect(memoCategoryFilter !== 'ALL' ? memoCategoryFilter : '');
             restoreMemoDraftIfAny('new');
@@ -7195,6 +7265,10 @@
                 const done = items.filter((_, i) => checks[i]).length;
                 const pct = items.length ? Math.round(done / items.length * 100) : 0;
                 const CHECK_SVG = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+                
+                const itemsWithState = items.map((text, i) => ({ text, index: i, checked: !!checks[i] }));
+                itemsWithState.sort((a, b) => a.checked - b.checked);
+
                 clContainer.innerHTML = `
                     <div style="margin-top:20px;padding-top:16px;border-top:1px dashed var(--border)">
                         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
@@ -7204,14 +7278,14 @@
                         <div style="height:4px;background:var(--border2);border-radius:2px;margin-bottom:14px;overflow:hidden">
                             <div id="mv-cl-prog-bar" style="height:100%;background:var(--p);border-radius:2px;width:${pct}%;transition:width .3s"></div>
                         </div>
-                        ${items.map((item, i) => `
-                            <label onclick="event.stopPropagation();mvToggleCheck('${m.id}',${i},this)"
-                                style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;cursor:pointer;transition:background .15s;margin-bottom:4px;background:${checks[i] ? 'rgba(99,102,241,.08)' : 'transparent'}">
-                                <div id="mv-cl-box-${m.id}-${i}" style="width:20px;height:20px;border-radius:6px;flex-shrink:0;border:2px solid ${checks[i] ? 'var(--p)' : 'var(--border)'};background:${checks[i] ? 'var(--p)' : 'transparent'};display:flex;align-items:center;justify-content:center;transition:all .15s">
-                                    ${checks[i] ? CHECK_SVG : ''}
+                        ${itemsWithState.map((x) => `
+                            <label onclick="event.stopPropagation();mvToggleCheck('${m.id}',${x.index},this)"
+                                style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;cursor:pointer;transition:background .15s;margin-bottom:4px;background:${x.checked ? 'rgba(99,102,241,.08)' : 'transparent'}">
+                                <div id="mv-cl-box-${m.id}-${x.index}" style="width:20px;height:20px;border-radius:6px;flex-shrink:0;border:2px solid ${x.checked ? 'var(--p)' : 'var(--border)'};background:${x.checked ? 'var(--p)' : 'transparent'};display:flex;align-items:center;justify-content:center;transition:all .15s">
+                                    ${x.checked ? CHECK_SVG : ''}
                                 </div>
-                                <span id="mv-cl-span-${m.id}-${i}" style="font-size:14px;line-height:1.4;text-decoration:${checks[i] ? 'line-through' : 'none'};color:${checks[i] ? 'var(--txt3)' : 'var(--txt)'}">
-                                    ${item}
+                                <span id="mv-cl-span-${m.id}-${x.index}" style="font-size:14px;line-height:1.4;text-decoration:${x.checked ? 'line-through' : 'none'};color:${x.checked ? 'var(--txt3)' : 'var(--txt)'}">
+                                    ${x.text}
                                 </span>
                             </label>`).join('')}
                     </div>
@@ -7297,11 +7371,19 @@
             document.getElementById('m-content').value = m.content || '';
             document.getElementById('m-id').value = m.id;
             document.getElementById('m-color').value = m.color || '';
+            
+            const container = document.getElementById('m-checklist-inputs-container');
+            container.innerHTML = '';
             const hasCl = !!(m.checklist && m.checklist.trim());
             const cb = document.getElementById('m-has-checklist');
             cb.checked = hasCl;
-            document.getElementById('m-checklist').style.display = hasCl ? 'block' : 'none';
-            document.getElementById('m-checklist').value = m.checklist || '';
+            container.style.display = hasCl ? 'flex' : 'none';
+            if (hasCl) {
+                m.checklist.split('\n').filter(Boolean).forEach(itemText => {
+                    addChecklistItemRow(itemText);
+                });
+            }
+            
             renderColorPicker(m.color || '');
             renderMemoCatSelect(m.category || '');
             restoreMemoDraftIfAny(m.id);
@@ -7315,20 +7397,49 @@
             const color = document.getElementById('m-color').value;
             const category = document.getElementById('m-cat').value;
             const cb = document.getElementById('m-has-checklist');
-            const checklist = cb.checked ? (document.getElementById('m-checklist').value || '') : '';
+            
+            let checklist = '';
+            let oldChecklistItems = [];
             const id = document.getElementById('m-id').value;
+            
+            if (id) {
+                const oldMemo = memos.find(x => x.id === id);
+                if (oldMemo && oldMemo.checklist) {
+                    const oldTexts = oldMemo.checklist.split('\n').filter(Boolean);
+                    const oldChecks = checklistItems[id] || [];
+                    oldChecklistItems = oldTexts.map((txt, idx) => ({ txt, checked: !!oldChecks[idx] }));
+                }
+            }
+
             const now = new Date().toISOString();
             let memoObj;
             if (id) {
                 const idx = memos.findIndex(x => x.id === id);
                 if (idx >= 0) {
-                    memos[idx] = { ...memos[idx], title, content, checklist, color, category, updatedAt: now, dirty: true };
+                    memos[idx] = { ...memos[idx], title, content, color, category, updatedAt: now, dirty: true };
                     memoObj = memos[idx];
                 }
             } else {
-                memoObj = { id: Date.now() + '', title, content, checklist, color, category, createdAt: now, updatedAt: now, dirty: true };
+                memoObj = { id: Date.now() + '', title, content, color, category, createdAt: now, updatedAt: now, dirty: true };
                 memos.unshift(memoObj);
             }
+            
+            if (cb.checked) {
+                const inputs = Array.from(document.querySelectorAll('.m-checklist-item-input'))
+                    .map(inp => inp.value.trim())
+                    .filter(Boolean);
+                checklist = inputs.join('\n');
+
+                const newChecks = inputs.map(text => {
+                    const found = oldChecklistItems.find(x => x.txt === text);
+                    return found ? found.checked : false;
+                });
+                checklistItems[memoObj.id] = newChecks;
+            } else {
+                delete checklistItems[memoObj.id];
+            }
+            memoObj.checklist = checklist;
+            
             save();
             clearMemoDraft();
             if (memoObj) await syncMemoToSupabase(memoObj);
@@ -7357,30 +7468,26 @@
             document.querySelector('#memo-modal .modal-box').style.background = color || 'var(--surface)';
         }
         function toggleChecklistField(checked) {
-            // checked 인자가 없으면 DOM에서 직접 읽기
             const v = (checked !== undefined) ? checked : document.getElementById('m-has-checklist').checked;
-            const el = document.getElementById('m-checklist');
+            const container = document.getElementById('m-checklist-inputs-container');
             if (v) {
-                el.style.display = 'block';
-                el.focus();
+                container.style.display = 'flex';
+                if (container.querySelectorAll('.m-checklist-row').length === 0) {
+                    addChecklistItemRow('');
+                }
+                const firstInput = container.querySelector('.m-checklist-item-input');
+                if (firstInput) firstInput.focus();
             } else {
-                el.style.display = 'none';
+                container.style.display = 'none';
             }
         }
         async function toggleCheckItem(memoId, idx, val) {
             if (!checklistItems[memoId]) checklistItems[memoId] = [];
             checklistItems[memoId][idx] = val;
             save();
-            // 해당 체크 아이템만 즉시 업데이트 (전체 re-render 불필요)
-            const item = document.querySelector(`[data-cl="${memoId}-${idx}"]`);
-            if (item) {
-                if (val) { item.classList.add('checked-item'); }
-                else { item.classList.remove('checked-item'); }
-                const span = item.querySelector('span');
-                if (span) { span.style.textDecoration = val ? 'line-through' : ''; span.style.opacity = val ? '0.45' : ''; }
-            }
-            // 진행바 업데이트
-            updateClProgress(memoId);
+            
+            // Re-render board view to instantly move completed checklist items to the bottom of the card
+            render();
 
             // Supabase 동기화
             const m = memos.find(x => x.id === memoId);
@@ -7392,37 +7499,14 @@
             checklistItems[memoId][idx] = newVal;
             save();
 
-            // 라벨 즉시 업데이트
-            const CHECK_SVG = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
-            const box = document.getElementById(`mv-cl-box-${memoId}-${idx}`);
-            const span = document.getElementById(`mv-cl-span-${memoId}-${idx}`);
-            if (box) {
-                box.style.background = newVal ? 'var(--p)' : 'transparent';
-                box.style.borderColor = newVal ? 'var(--p)' : 'var(--border)';
-                box.innerHTML = newVal ? CHECK_SVG : '';
-            }
-            if (span) {
-                span.style.textDecoration = newVal ? 'line-through' : 'none';
-                span.style.color = newVal ? 'var(--txt3)' : 'var(--txt)';
-            }
-            if (labelEl) labelEl.style.background = newVal ? 'rgba(99,102,241,.08)' : 'transparent';
-
-            // 팝업 진행률 바 업데이트
-            const m = memos.find(x => x.id === memoId);
-            if (m && m.checklist) {
-                const total = m.checklist.split('\n').filter(Boolean).length;
-                const done = (checklistItems[memoId] || []).filter(Boolean).length;
-                const pct = Math.round(done / total * 100);
-                const bar = document.getElementById('mv-cl-prog-bar');
-                const txt = document.getElementById('mv-cl-prog-txt');
-                if (bar) bar.style.width = pct + '%';
-                if (txt) txt.textContent = `${done}/${total}`;
-            }
+            // Re-render view to show items sorted with completed ones at the bottom
+            _renderMemoView(memoId);
 
             // 메모 카드 진행바 동기화
             updateClProgress(memoId);
 
             // Supabase 동기화
+            const m = memos.find(x => x.id === memoId);
             if (m) await syncMemoToSupabase(m);
         }
 
