@@ -4251,7 +4251,7 @@
                     <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
                 </svg> 시스템 설정</div>
             <div class="sidebar-version" style="margin-top: 8px; padding: 6px 8px 0; border-top: 1px dashed var(--border2); display: flex; justify-content: space-between; font-size: 9px; color: var(--txt3); font-weight: 700; opacity: 0.8;">
-                <span>v1.6.4</span>
+                <span>v1.6.5</span>
                 <span>2026-07-09</span>
             </div>
         </div>
@@ -5805,9 +5805,9 @@
         <button onclick="event.stopPropagation();openMemoEdit('${m.id}')" title="편집"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
         <button onclick="event.stopPropagation();deleteMemo('${m.id}')" title="삭제" style="color:var(--danger)"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>
       </div>
-      <div class="mc-title">${m.title || 'Memo'}</div>
+      <div class="mc-title">${memoLockEnabled && m.locked ? '🔒 잠긴 메모' : m.title || 'Memo'}</div>
       ${memoLockEnabled && m.locked ?
-                    `<div class="mc-content" style="color:var(--txt3);font-style:italic;font-size:10px">잠긴 메모입니다</div>` :
+                    `<div class="mc-content" style="color:var(--txt3);font-style:italic;font-size:10px">비밀번호를 입력해야 볼 수 있습니다</div>` :
                     (!m.checklist ? `<div class="mc-content">${(m.content || '').slice(0, 60)}${(m.content || '').length > 60 ? '...' : ''}</div>` : '') +
                     (m.checklist ? (() => {
                         const ci = m.checklist.split('\n').filter(Boolean);
@@ -6037,18 +6037,19 @@
                 <button onclick="event.stopPropagation();openMemoEdit('${m.id}')" title="편집"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
                 <button onclick="event.stopPropagation();deleteMemo('${m.id}')" title="삭제" style="color:var(--danger)"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>
               </div>
-              <div class="mc-title" contenteditable="false" id="mc-title-${m.id}">${m.title || 'Memo'}${m.dirty ? ` <span class="sync-badge" title="클라우드 전송 대기 중 (기기에만 저장됨)" style="font-size:9px;padding:2px 6px;background:rgba(245,158,11,0.15);color:#d97706;border-radius:6px;font-weight:700;margin-left:6px;display:inline-flex;align-items:center;gap:3px;vertical-align:middle"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="animate-spin"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>기기 전용</span>` : ''}</div>
+              <div class="mc-title" contenteditable="false" id="mc-title-${m.id}">${memoLockEnabled && m.locked ? '🔒 잠긴 메모' : m.title || 'Memo'}${m.dirty ? ` <span class="sync-badge" title="클라우드 전송 대기 중 (기기에만 저장됨)" style="font-size:9px;padding:2px 6px;background:rgba(245,158,11,0.15);color:#d97706;border-radius:6px;font-weight:700;margin-left:6px;display:inline-flex;align-items:center;gap:3px;vertical-align:middle"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="animate-spin"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>기기 전용</span>` : ''}</div>
               ${memoLockEnabled && m.locked ?
-                    `<div class="mc-content" style="color:var(--txt3);font-style:italic;font-size:10px">잠긴 메모입니다</div>` :
+                    `<div class="mc-content" style="color:var(--txt3);font-style:italic;font-size:10px">비밀번호를 입력해야 볼 수 있습니다</div>` :
                     `<div class="mc-content" contenteditable="false" id="mc-content-${m.id}" style="white-space:pre-wrap;margin-bottom:12px">${m.content || ''}</div>`
                 }
-              ${m.category ? `<div class="mc-cat-tag" style="background:${memoCats[m.category] ? memoCats[m.category] + '22' : 'rgba(0,0,0,0.07)'};color:${memoCats[m.category] || 'var(--txt2)'}">${m.category}</div>` : ''}
+              ${m.category && (!memoLockEnabled || !m.locked) ? `<div class="mc-cat-tag" style="background:${memoCats[m.category] ? memoCats[m.category] + '22' : 'rgba(0,0,0,0.07)'};color:${memoCats[m.category] || 'var(--txt2)'}">${m.category}</div>` : ''}
+              ${(!memoLockEnabled || !m.locked) ? `
               <div class="mc-cat-move" onclick="event.stopPropagation()">
                 <select onclick="event.stopPropagation()" onchange="event.stopPropagation();changeMemoCategory('${m.id}', this.value)">
                   <option value="">이동...</option>
                   ${Object.keys(memoCats).map(c => `<option value="${c}" ${m.category === c ? 'selected' : ''}>${c}</option>`).join('')}
                 </select>
-              </div>
+              </div>` : ''}
               ${(!memoLockEnabled || !m.locked) && m.checklist ? (() => {
                     const clItems = m.checklist.split('\n').filter(Boolean);
                     const clChecks = checklistItems[m.id] || [];
@@ -6901,9 +6902,19 @@
             document.getElementById('task-modal').classList.add('open');
             showRelatedMemosPopup(t);
         }
-        function copyMemoText(id) {
+        function copyMemoText(id, bypassLock = false) {
             const m = memos.find(x => x.id === id);
             if (!m) return;
+            if (!bypassLock && memoLockEnabled && m.locked) {
+                const modal = document.getElementById('memo-unlock-modal');
+                modal.dataset.targetId = id;
+                modal.dataset.actionType = 'copy';
+                document.getElementById('memo-unlock-input').value = '';
+                document.getElementById('memo-unlock-err').textContent = '';
+                modal.classList.add('open');
+                setTimeout(() => document.getElementById('memo-unlock-input').focus(), 100);
+                return;
+            }
             const lines = [];
             if (m.title) lines.push('[ ' + m.title + ' ]');
             if (m.content) lines.push(m.content);
@@ -7343,6 +7354,19 @@
             if (!id) return;
             const m = memos.find(x => x.id === id);
             if (!m) return;
+            
+            // Unlocking a locked memo requires PIN verification first
+            if (memoLockEnabled && m.locked) {
+                const modal = document.getElementById('memo-unlock-modal');
+                modal.dataset.targetId = id;
+                modal.dataset.actionType = 'unlock';
+                document.getElementById('memo-unlock-input').value = '';
+                document.getElementById('memo-unlock-err').textContent = '';
+                modal.classList.add('open');
+                setTimeout(() => document.getElementById('memo-unlock-input').focus(), 100);
+                return;
+            }
+            
             m.locked = !m.locked;
             save(); render();
             await syncMemoToSupabase(m);
@@ -7353,9 +7377,32 @@
         function submitMemoUnlock() {
             const input = document.getElementById('memo-unlock-input').value;
             if (input === lockPin) {
-                const id = document.getElementById('memo-unlock-modal').dataset.targetId;
-                document.getElementById('memo-unlock-modal').classList.remove('open');
-                _renderMemoView(id);
+                const modal = document.getElementById('memo-unlock-modal');
+                const id = modal.dataset.targetId;
+                const action = modal.dataset.actionType;
+                modal.classList.remove('open');
+                
+                if (action === 'delete') {
+                    memos = memos.filter(m => m.id !== id);
+                    save(); render();
+                    deleteMemoFromSupabase(id);
+                    showToast('🗑️ 메모를 삭제했습니다', 'ok');
+                } else if (action === 'edit') {
+                    openMemoEdit(id, true);
+                } else if (action === 'copy') {
+                    copyMemoText(id, true);
+                } else if (action === 'unlock') {
+                    const m = memos.find(x => x.id === id);
+                    if (m) {
+                        m.locked = false;
+                        save(); render();
+                        syncMemoToSupabase(m);
+                        showToast('🔓 메모 잠금을 해제했습니다', 'ok');
+                        _renderMemoView(id);
+                    }
+                } else {
+                    _renderMemoView(id);
+                }
             } else {
                 document.getElementById('memo-unlock-err').textContent = '비밀번호가 올바르지 않습니다';
                 document.getElementById('memo-unlock-input').value = '';
@@ -7364,9 +7411,20 @@
         }
 
 
-        function openMemoEdit(id) {
+        function openMemoEdit(id, bypassLock = false) {
             const m = memos.find(x => x.id === id);
             if (!m) return;
+            if (!bypassLock && memoLockEnabled && m.locked) {
+                const modal = document.getElementById('memo-unlock-modal');
+                modal.dataset.targetId = id;
+                modal.dataset.actionType = 'edit';
+                document.getElementById('memo-unlock-input').value = '';
+                document.getElementById('memo-unlock-err').textContent = '';
+                modal.classList.add('open');
+                setTimeout(() => document.getElementById('memo-unlock-input').focus(), 100);
+                return;
+            }
+            
             document.getElementById('m-title').value = m.title || '';
             document.getElementById('m-content').value = m.content || '';
             document.getElementById('m-id').value = m.id;
@@ -7446,7 +7504,18 @@
             closeModals();
             render();
         }
-        async function deleteMemo(id) {
+        async function deleteMemo(id, bypassLock = false) {
+            const m = memos.find(x => x.id === id);
+            if (m && !bypassLock && memoLockEnabled && m.locked) {
+                const modal = document.getElementById('memo-unlock-modal');
+                modal.dataset.targetId = id;
+                modal.dataset.actionType = 'delete';
+                document.getElementById('memo-unlock-input').value = '';
+                document.getElementById('memo-unlock-err').textContent = '';
+                modal.classList.add('open');
+                setTimeout(() => document.getElementById('memo-unlock-input').focus(), 100);
+                return;
+            }
             memos = memos.filter(m => m.id !== id);
             save(); render();
             await deleteMemoFromSupabase(id);
