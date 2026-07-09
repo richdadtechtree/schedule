@@ -4251,8 +4251,8 @@
                     <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
                 </svg> 시스템 설정</div>
             <div class="sidebar-version" style="margin-top: 8px; padding: 6px 8px 0; border-top: 1px dashed var(--border2); display: flex; justify-content: space-between; font-size: 9px; color: var(--txt3); font-weight: 700; opacity: 0.8;">
-                <span>v1.6.8</span>
-                <span>2026-07-09</span>
+                <span>v1.6.9</span>
+                <span>2026-07-10</span>
             </div>
         </div>
     </aside>
@@ -6061,9 +6061,17 @@
 
                     return `<div class="mc-checklist">
                   ${itemsWithState.map((x) => `
-                    <label class="mc-checklist-item${x.checked ? ' checked-item' : ''}" data-cl="${m.id}-${x.index}" onclick="event.stopPropagation()">
-                      <input type="checkbox" ${x.checked ? 'checked' : ''} onchange="toggleCheckItem('${m.id}',${x.index},this.checked)" onclick="event.stopPropagation()">
-                      <span>${x.item}</span>
+                    <label class="mc-checklist-item${x.checked ? ' checked-item' : ''}" data-cl="${m.id}-${x.index}" onclick="event.stopPropagation()" style="display:flex;align-items:center;justify-content:space-between;width:100%;gap:8px">
+                      <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:0">
+                        <input type="checkbox" ${x.checked ? 'checked' : ''} onchange="toggleCheckItem('${m.id}',${x.index},this.checked)" onclick="event.stopPropagation()">
+                        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${x.item}</span>
+                      </div>
+                      <button onclick="event.stopPropagation();copyChecklistItemText('${escStr(x.item)}')" title="항목 복사" style="background:transparent;border:none;color:var(--txt3);cursor:pointer;padding:2px;display:flex;align-items:center;opacity:0.5;transition:opacity .15s;flex-shrink:0" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.5">
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                             <rect x="9" y="9" width="13" height="13" rx="2"></rect>
+                             <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                          </svg>
+                      </button>
                     </label>`).join('')}
                   <div class="cl-progress">
                     <div class="cl-progress-bar"><div class="cl-progress-fill" data-cl-fill="${m.id}" style="width:${clPct}%"></div></div>
@@ -6931,6 +6939,18 @@
                 showToast('클립보드에 복사됐어요! 📋');
             });
         }
+        function copyChecklistItemText(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                showToast('📋 항목이 복사되었습니다: ' + (text.length > 15 ? text.slice(0, 15) + '...' : text), 'ok');
+            }).catch(() => {
+                const ta = document.createElement('textarea');
+                ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+                document.body.appendChild(ta); ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+                showToast('📋 항목이 복사되었습니다: ' + (text.length > 15 ? text.slice(0, 15) + '...' : text), 'ok');
+            });
+        }
         function setDateType(type) {
             const isSingle = type === 'single';
             document.getElementById('btn-single').classList.toggle('active', isSingle);
@@ -7291,15 +7311,23 @@
                             <div id="mv-cl-prog-bar" style="height:100%;background:var(--p);border-radius:2px;width:${pct}%;transition:width .3s"></div>
                         </div>
                         ${itemsWithState.map((x) => `
-                            <label onclick="event.stopPropagation();mvToggleCheck('${m.id}',${x.index},this)"
-                                style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;cursor:pointer;transition:background .15s;margin-bottom:4px;background:${x.checked ? 'rgba(99,102,241,.08)' : 'transparent'}">
-                                <div id="mv-cl-box-${m.id}-${x.index}" style="width:20px;height:20px;border-radius:6px;flex-shrink:0;border:2px solid ${x.checked ? 'var(--p)' : 'var(--border)'};background:${x.checked ? 'var(--p)' : 'transparent'};display:flex;align-items:center;justify-content:center;transition:all .15s">
-                                    ${x.checked ? CHECK_SVG : ''}
-                                </div>
-                                <span id="mv-cl-span-${m.id}-${x.index}" style="font-size:14px;line-height:1.4;text-decoration:${x.checked ? 'line-through' : 'none'};color:${x.checked ? 'var(--txt3)' : 'var(--txt)'}">
-                                    ${x.text}
-                                </span>
-                            </label>`).join('')}
+                            <div style="display:flex;align-items:center;justify-content:space-between;width:100%;gap:8px;padding:4px 12px;border-radius:10px;transition:background .15s;margin-bottom:4px;background:${x.checked ? 'rgba(99,102,241,.08)' : 'transparent'}">
+                                <label onclick="event.stopPropagation();mvToggleCheck('${m.id}',${x.index},this.parentNode)"
+                                    style="display:flex;align-items:center;gap:12px;flex:1;cursor:pointer;min-width:0;padding:6px 0">
+                                    <div id="mv-cl-box-${m.id}-${x.index}" style="width:20px;height:20px;border-radius:6px;flex-shrink:0;border:2px solid ${x.checked ? 'var(--p)' : 'var(--border)'};background:${x.checked ? 'var(--p)' : 'transparent'};display:flex;align-items:center;justify-content:center;transition:all .15s">
+                                        ${x.checked ? CHECK_SVG : ''}
+                                    </div>
+                                    <span id="mv-cl-span-${m.id}-${x.index}" style="font-size:14px;line-height:1.4;text-decoration:${x.checked ? 'line-through' : 'none'};color:${x.checked ? 'var(--txt3)' : 'var(--txt)'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+                                        ${x.text}
+                                    </span>
+                                </label>
+                                <button onclick="event.stopPropagation();copyChecklistItemText('${escStr(x.text)}')" title="항목 복사" style="background:transparent;border:none;color:var(--txt3);cursor:pointer;padding:4px;display:flex;align-items:center;opacity:0.6;transition:opacity .15s;flex-shrink:0" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.6">
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                     <rect x="9" y="9" width="13" height="13" rx="2"></rect>
+                                     <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                  </svg>
+                                </button>
+                            </div>`).join('')}
                     </div>
                 `;
             } else {
