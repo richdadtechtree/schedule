@@ -9219,6 +9219,20 @@
 
         init();
 
+        // ⏱️ 좋은글 자동 팝업: HTML이 열려있는 동안 30분마다 저장된 좋은글을 랜덤으로 팝업
+        //   (진입 시 팝업은 init() 안의 setTimeout(showRandomQuotePopup, 800)으로 별도 처리됨)
+        const QUOTE_POPUP_INTERVAL_MS = 30 * 60 * 1000; // 30분
+        setInterval(() => {
+            // 저장된 좋은글이 없으면 건너뜀
+            if (!quotes || quotes.length === 0) return;
+            // 이미 좋은글 팝업이 열려있으면 중복 노출 방지
+            const qm = document.getElementById('quote-modal');
+            if (qm && qm.classList.contains('open')) return;
+            // 한 번만 노출되도록 하는 플래그를 초기화하여 재노출 허용
+            quotePopupShown = false;
+            showRandomQuotePopup();
+        }, QUOTE_POPUP_INTERVAL_MS);
+
         // 탭이 다시 활성화될 때 DB에서 최신 설정(카테고리 등)을 자동으로 당겨옴
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'visible' && currentUser) {
