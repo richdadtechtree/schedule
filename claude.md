@@ -24,6 +24,7 @@
 ```
 schedule/
 ├── index.html                          # 메인 앱 (8,765줄, ~387KB) — 모든 기능 포함
+├── local.html                          # 비 로그인(로컬 전용) 버전 — 구글 로그인/클라우드 동기화 없이 localStorage에만 저장
 ├── index3.html                         # 이전 버전 또는 테스트용 파일 (2,508줄)
 ├── sw.js                               # Service Worker (푸시 알림, 캐시 관리)
 ├── claude.md                           # 이 설명서
