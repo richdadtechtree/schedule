@@ -4252,7 +4252,7 @@
                     <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
                 </svg> 시스템 설정</div>
             <div class="sidebar-version" style="margin-top: 8px; padding: 6px 8px 0; border-top: 1px dashed var(--border2); display: flex; justify-content: space-between; font-size: 9px; color: var(--txt3); font-weight: 700; opacity: 0.8;">
-                <span>v1.6.11</span>
+                <span>v1.6.12</span>
                 <span>2026-07-27</span>
             </div>
         </div>
@@ -8365,6 +8365,13 @@
             }
             try { if (navigator.vibrate) navigator.vibrate([200, 100, 200]); } catch (e) { }
         }
+        function repeatPomo() {
+            // 같은 시간/제목으로 타이머를 다시 시작 (반복 알림)
+            closeModals();
+            resetPomo();
+            startPomo();
+            showToast(`⏰ 다시 시작합니다${pomoTitle ? ' — ' + pomoTitle : ''}`);
+        }
 
         function suggestNextTask() {
             const td = today();
@@ -9461,7 +9468,13 @@
             <div style="font-size: 54px; line-height: 1; margin-bottom: 16px;">⏰</div>
             <div style="font-size: 11px; font-weight: 800; color: var(--p); text-transform: uppercase; letter-spacing: 2.5px; margin-bottom: 20px;">타이머 완료</div>
             <div id="pomo-alert-text" style="font-size: 24px; font-weight: 800; line-height: 1.6; color: var(--txt); margin-bottom: 32px; white-space: pre-wrap; word-break: keep-all; letter-spacing: -0.4px;"></div>
-            <button class="btn btn-primary" style="padding: 12px 40px; border-radius: 14px; font-size: 12px; font-weight: 800; box-shadow: 0 4px 14px var(--p-glow); letter-spacing: 0.5px;" onclick="closeModals()">확인</button>
+            <div style="display: flex; gap: 12px; justify-content: center;">
+                <button class="btn btn-ghost" style="padding: 12px 24px; border-radius: 14px; font-size: 12px; font-weight: 800; border: 1.5px solid var(--border); display: flex; align-items: center; gap: 6px;" onclick="repeatPomo()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+                    반복
+                </button>
+                <button class="btn btn-primary" style="padding: 12px 40px; border-radius: 14px; font-size: 12px; font-weight: 800; box-shadow: 0 4px 14px var(--p-glow); letter-spacing: 0.5px;" onclick="closeModals()">확인</button>
+            </div>
         </div>
     </div>
 
