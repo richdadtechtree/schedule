@@ -4140,6 +4140,7 @@
                     <rect x="4" y="4" width="16" height="16" rx="2" />
                 </svg></span>
         </div>
+        <div id="pomo-title-label" style="display:none;text-align:center;font-size:11px;color:var(--txt2);margin:-8px 0 12px;font-weight:700;word-break:keep-all;"></div>
 
         <!-- Quick Action Buttons -->
         <div style="display: flex; gap: 6px; width: 100%; margin-bottom: 16px;">
@@ -4251,8 +4252,8 @@
                     <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
                 </svg> 시스템 설정</div>
             <div class="sidebar-version" style="margin-top: 8px; padding: 6px 8px 0; border-top: 1px dashed var(--border2); display: flex; justify-content: space-between; font-size: 9px; color: var(--txt3); font-weight: 700; opacity: 0.8;">
-                <span>v1.6.10</span>
-                <span>2026-07-26</span>
+                <span>v1.6.11</span>
+                <span>2026-07-27</span>
             </div>
         </div>
     </aside>
@@ -5523,6 +5524,7 @@
             updateDarkLabel();
             scheduleNotifications();
             updatePomoDisp();
+            updatePomoTitleDisp();
             updateWeather();
 
             // Supabase 초기 동기화
@@ -8308,14 +8310,23 @@
 
         // ===================== POMODORO =====================
         let pomoDuration = parseInt(localStorage.getItem('pne_pomo_dur')) || 1500;
+        let pomoTitle = localStorage.getItem('pne_pomo_title') || '';
         let pomoTime = pomoDuration, pomoInt = null;
         function setPomoDuration() {
             const min = prompt('집중 시간(분)을 입력하세요:', Math.floor(pomoDuration / 60));
-            if (min !== null && !isNaN(min) && min > 0) {
+            if (min === null) return;
+            if (!isNaN(min) && min > 0) {
                 pomoDuration = parseInt(min) * 60;
                 localStorage.setItem('pne_pomo_dur', pomoDuration);
+                // 시간이 되면 화면에 띄울 내용(제목) 입력 - 선택 사항
+                const title = prompt('시간이 되면 표시할 내용을 입력하세요 (선택):\n예) 자세 바르게 하기', pomoTitle || '');
+                if (title !== null) {
+                    pomoTitle = title.trim();
+                    localStorage.setItem('pne_pomo_title', pomoTitle);
+                }
                 resetPomo();
-                showToast(`타이머가 ${min}분으로 설정되었습니다.`);
+                updatePomoTitleDisp();
+                showToast(`타이머가 ${min}분으로 설정되었습니다.${pomoTitle ? ' — ' + pomoTitle : ''}`);
             }
         }
         function startPomo() {
@@ -8325,12 +8336,34 @@
                 updatePomoDisp();
                 if (pomoTime <= 0) {
                     resetPomo();
-                    alert('🍅 포모도로 완료! 휴식 시간입니다.');
+                    showPomoAlert(pomoTitle);
                     suggestNextTask();
                 }
             }, 1000);
             document.getElementById('pomo-play').style.display = 'none';
             document.getElementById('pomo-pause').style.display = 'inline';
+        }
+        function updatePomoTitleDisp() {
+            const el = document.getElementById('pomo-title-label');
+            if (!el) return;
+            if (pomoTitle) {
+                el.textContent = '⏰ ' + pomoTitle;
+                el.style.display = 'block';
+            } else {
+                el.style.display = 'none';
+            }
+        }
+        function showPomoAlert(title) {
+            const msg = (title && title.trim()) ? title.trim() : '🍅 포모도로 완료! 휴식 시간입니다.';
+            const textEl = document.getElementById('pomo-alert-text');
+            if (textEl) textEl.textContent = msg;
+            const modal = document.getElementById('pomo-alert-modal');
+            if (modal) modal.classList.add('open');
+            // 브라우저 알림 + 진동으로도 알려줌
+            if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+                try { new Notification('⏰ 타이머 완료', { body: msg }); } catch (e) { }
+            }
+            try { if (navigator.vibrate) navigator.vibrate([200, 100, 200]); } catch (e) { }
         }
 
         function suggestNextTask() {
@@ -9421,6 +9454,17 @@
     </div>
 
     <!-- RANDOM QUOTE MODAL (Start popup) -->
+    <!-- POMODORO ALERT MODAL -->
+    <div class="modal-overlay" id="pomo-alert-modal">
+        <div class="modal-box" style="max-width: 440px; padding: 44px 36px; text-align: center; border: 1px solid var(--border); background: var(--surface); backdrop-filter: var(--glass); box-shadow: var(--shadow-lg); border-radius: 28px;">
+            <button class="modal-close" onclick="closeModals()">✕</button>
+            <div style="font-size: 54px; line-height: 1; margin-bottom: 16px;">⏰</div>
+            <div style="font-size: 11px; font-weight: 800; color: var(--p); text-transform: uppercase; letter-spacing: 2.5px; margin-bottom: 20px;">타이머 완료</div>
+            <div id="pomo-alert-text" style="font-size: 24px; font-weight: 800; line-height: 1.6; color: var(--txt); margin-bottom: 32px; white-space: pre-wrap; word-break: keep-all; letter-spacing: -0.4px;"></div>
+            <button class="btn btn-primary" style="padding: 12px 40px; border-radius: 14px; font-size: 12px; font-weight: 800; box-shadow: 0 4px 14px var(--p-glow); letter-spacing: 0.5px;" onclick="closeModals()">확인</button>
+        </div>
+    </div>
+
     <div class="modal-overlay" id="quote-modal">
         <div class="modal-box" style="max-width: 540px; padding: 44px 36px; text-align: center; border: 1px solid var(--border); background: var(--surface); backdrop-filter: var(--glass); box-shadow: var(--shadow-lg); border-radius: 28px;">
             <button class="modal-close" onclick="closeModals()">✕</button>
