@@ -5519,6 +5519,7 @@
             render7Day();
             render();
             startClock();
+            startHappinessScheduler();
             renderQuickLinks();
             renderCategorySelects();
             updateDarkLabel();
@@ -5682,6 +5683,28 @@
                     `${n.getFullYear()}/${String(n.getMonth() + 1).padStart(2, '0')}/${String(n.getDate()).padStart(2, '0')} (${days[n.getDay()]}) ${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}:${String(n.getSeconds()).padStart(2, '0')}`;
             }
             tick(); setInterval(tick, 1000);
+        }
+
+        // ===================== 소소한 행복 생각하기 팝업 스케줄 =====================
+        // 매일 09:30 / 13:10 / 15:10 에 '소소한 행복 생각하기' 팝업을 띄운다.
+        const HAPPINESS_TIMES = ['09:30', '13:10', '15:10'];
+        function showHappinessPopup() {
+            const el = document.getElementById('happiness-modal');
+            if (el) el.classList.add('open');
+        }
+        function checkHappinessSchedule() {
+            const n = new Date();
+            const hhmm = String(n.getHours()).padStart(2, '0') + ':' + String(n.getMinutes()).padStart(2, '0');
+            if (!HAPPINESS_TIMES.includes(hhmm)) return;
+            // 같은 날 같은 시각에는 한 번만(새로고침/인터벌 반복 방지)
+            const key = 'pne_happiness_shown_' + today() + '_' + hhmm;
+            if (localStorage.getItem(key)) return;
+            localStorage.setItem(key, '1');
+            showHappinessPopup();
+        }
+        function startHappinessScheduler() {
+            checkHappinessSchedule();
+            setInterval(checkHappinessSchedule, 15000);
         }
 
         // ===================== 7-DAY STRIP =====================
@@ -9501,6 +9524,18 @@
                 </button>
                 <button class="btn btn-primary" style="padding: 12px 32px; border-radius: 14px; font-size: 12px; font-weight: 800; box-shadow: 0 4px 14px var(--p-glow); letter-spacing: 0.5px;" onclick="closeModals()">시작하기</button>
             </div>
+        </div>
+    </div>
+
+    <!-- 소소한 행복 생각하기 팝업 (09:30 / 13:10 / 15:10) -->
+    <div class="modal-overlay" id="happiness-modal">
+        <div class="modal-box" style="max-width: 460px; padding: 44px 36px; text-align: center; border: 1px solid var(--border); background: var(--surface); backdrop-filter: var(--glass); box-shadow: var(--shadow-lg); border-radius: 28px;">
+            <button class="modal-close" onclick="closeModals()">✕</button>
+            <div style="font-size: 56px; line-height: 1; margin-bottom: 18px;">🌿</div>
+            <div style="font-size: 11px; font-weight: 800; color: var(--p); text-transform: uppercase; letter-spacing: 2.5px; margin-bottom: 16px;">Small Happiness</div>
+            <div style="font-size: 24px; font-weight: 800; line-height: 1.6; color: var(--txt); margin-bottom: 14px; word-break: keep-all; letter-spacing: -0.4px;">소소한 행복 생각하기</div>
+            <div style="font-size: 13px; color: var(--txt2); line-height: 1.7; margin-bottom: 30px; word-break: keep-all;">잠시 멈춰서 오늘 나를 미소 짓게 한<br>작은 행복 하나를 떠올려 보세요 😊</div>
+            <button class="btn btn-primary" style="padding: 12px 36px; border-radius: 14px; font-size: 12px; font-weight: 800; box-shadow: 0 4px 14px var(--p-glow); letter-spacing: 0.5px;" onclick="closeModals()">좋아요</button>
         </div>
     </div>
 
