@@ -5477,14 +5477,9 @@
             console.log('Initializing app...');
             console.log('Current URL:', window.location.href);
 
-            // 세션 상태 체크
-            const { data: { session } } = await supabaseClient.auth.getSession();
-            if (session) {
-                currentUser = session.user;
-                updateAuthUI(currentUser);
-                await syncFromSupabase();
-            }
-
+            // 첫 화면(대시보드)을 세션/네트워크 상태와 무관하게 먼저 렌더링한다.
+            // getSession() 등 await 호출이 지연·실패하면 render()까지 도달하지 못해
+            // 첫 화면 대시보드가 비어 보이던 문제를 방지한다.
             if (isDark) document.documentElement.setAttribute('data-dark', '');
             render7Day();
             render();
@@ -5498,8 +5493,24 @@
             updatePomoTitleDisp();
             updateWeather();
 
+            // 세션 상태 체크 (실패하더라도 위 첫 화면 렌더링에는 영향 없음)
+            try {
+                const { data: { session } } = await supabaseClient.auth.getSession();
+                if (session) {
+                    currentUser = session.user;
+                    updateAuthUI(currentUser);
+                    await syncFromSupabase();
+                }
+            } catch (e) {
+                console.warn('세션 확인 실패:', e);
+            }
+
             // Supabase 초기 동기화
-            await syncFromSupabase();
+            try {
+                await syncFromSupabase();
+            } catch (e) {
+                console.warn('초기 동기화 실패:', e);
+            }
 
             // Service Worker
             if ('serviceWorker' in navigator) {
