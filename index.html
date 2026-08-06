@@ -1087,6 +1087,27 @@
             display: block
         }
 
+        /* 메모/좋은글 목록 상단 헤더(추가 버튼)를 스크롤해도 항상 보이도록 고정 */
+        .sticky-add-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: -14px;
+            z-index: 30;
+            background: var(--bg);
+            margin: -14px -16px 12px;
+            padding: 14px 16px 12px;
+        }
+
+        @media (max-width: 768px) {
+            .sticky-add-header {
+                top: -10px;
+                margin: -10px -8px 10px;
+                padding: 10px 8px 10px;
+            }
+        }
+
         .view::-webkit-scrollbar {
             width: 4px
         }
@@ -6044,12 +6065,25 @@
         }
 
         // ===================== MEMOS VIEW =====================
+        // 메모/좋은글을 최신 작성 순으로 정렬(가장 최근에 작성한 글이 위로)
+        function _createdTs(o) {
+            if (o && o.createdAt) {
+                const t = new Date(o.createdAt).getTime();
+                if (!isNaN(t)) return t;
+            }
+            const n = parseInt(String((o && o.id) || '').replace(/\D/g, ''), 10);
+            return isNaN(n) ? 0 : n;
+        }
+        function sortByNewest(list) {
+            return list.slice().sort((a, b) => _createdTs(b) - _createdTs(a));
+        }
+
         function renderMemosView(fMemos) {
             const area = document.getElementById('v-memos');
-            const filteredMemos = memoCategoryFilter === 'ALL' ? fMemos : fMemos.filter(m => m.category === memoCategoryFilter);
+            const filteredMemos = sortByNewest(memoCategoryFilter === 'ALL' ? fMemos : fMemos.filter(m => m.category === memoCategoryFilter));
 
             area.innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+    <div class="sticky-add-header">
       <div>
         <h4 style="font-family:'Outfit';font-size:18px;font-weight:900;margin-bottom:4px">📝 Smart Memos</h4>
         <div style="font-size:11px;color:var(--txt3)">${filteredMemos.length}개의 메모가 있습니다</div>
@@ -8824,10 +8858,10 @@
                 const search = searchQuery.toLowerCase();
                 return q.content.toLowerCase().includes(search) || (q.author || '').toLowerCase().includes(search);
             });
-            const filteredQuotes = quoteCategoryFilter === 'ALL' ? fQuotes : fQuotes.filter(q => q.category === quoteCategoryFilter);
+            const filteredQuotes = sortByNewest(quoteCategoryFilter === 'ALL' ? fQuotes : fQuotes.filter(q => q.category === quoteCategoryFilter));
 
             area.innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+    <div class="sticky-add-header">
       <div>
         <h4 style="font-family:'Outfit';font-size:18px;font-weight:900;margin-bottom:4px">✨ 좋은글 모음</h4>
         <div style="font-size:11px;color:var(--txt3)">${filteredQuotes.length}개의 좋은글이 있습니다</div>
