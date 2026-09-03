@@ -1394,7 +1394,24 @@
         .tasks-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 8px
+            gap: 8px;
+            max-height: 420px;
+            overflow-y: auto;
+            padding-right: 4px;
+            align-content: start;
+        }
+
+        .tasks-grid::-webkit-scrollbar {
+            width: 4px
+        }
+
+        .tasks-grid::-webkit-scrollbar-track {
+            background: transparent
+        }
+
+        .tasks-grid::-webkit-scrollbar-thumb {
+            background: var(--border2);
+            border-radius: 2px
         }
 
         .task-card {
@@ -3657,9 +3674,19 @@
                 grid-template-columns: repeat(2, 1fr);
             }
 
-            /* Tasks grid: single column */
+            /* Tasks grid: single column, shorter scroll area, tighter text */
             .tasks-grid {
                 grid-template-columns: 1fr;
+                max-height: 320px;
+            }
+
+            .task-card {
+                padding: 12px 14px;
+            }
+
+            .task-card .tc-title {
+                font-size: 12px;
+                line-height: 1.35;
             }
 
             /* Kanban: horizontal scroll */
@@ -5781,7 +5808,7 @@
 
         // ===================== OVERVIEW =====================
         function renderOverview(fTasks, fMemos) {
-            const todayTasks = fTasks.filter(t => !t.completed && isRecurringMatch(t, selectedDate)).slice(0, 6);
+            const todayTasks = fTasks.filter(t => !t.completed && isRecurringMatch(t, selectedDate));
             const cats = Object.keys(catColors);
 
             const progressHTML = cats.map(c => {
