@@ -1553,8 +1553,8 @@
         }
 
         .check-circle {
-            width: 18px;
-            height: 18px;
+            width: 26px;
+            height: 26px;
             border-radius: 50%;
             border: 2px solid var(--border2);
             display: flex;
@@ -1567,14 +1567,20 @@
 
         .check-circle:hover {
             border-color: var(--acc);
-            background: rgba(16, 185, 129, .1)
+            background: rgba(16, 185, 129, .1);
+            transform: scale(1.08);
+        }
+
+        .check-circle:active {
+            transform: scale(0.92);
         }
 
         .check-circle.checked {
             background: var(--acc);
             border-color: var(--acc);
             color: #fff;
-            font-size: 9px
+            font-size: 9px;
+            box-shadow: 0 0 0 4px rgba(16, 185, 129, .15);
         }
 
         /* MEMO CARDS */
@@ -3514,6 +3520,18 @@
             }
             .mcc-edit-btn, .mcc-del-btn {
                 opacity: 0.8 !important;
+            }
+
+            /* 모바일: 완료 버튼을 더 크고 누르기 쉽게 + 태스크 액션 버튼 항상 표시 */
+            .task-card .tc-actions {
+                opacity: 0.85 !important;
+            }
+            .check-circle {
+                width: 32px;
+                height: 32px;
+            }
+            .check-circle.checked {
+                font-size: 12px;
             }
 
             html, body {
@@ -5862,12 +5880,13 @@
         <div class="tc-title">${t.title}</div>
         <div style="display:flex;align-items:center;gap:4px">
           <div class="tc-actions">
+            ${!t.completed ? `<button class="tc-action-btn" onclick="event.stopPropagation();postponeTask('${t.id}')" title="하루 미루기" style="font-size:9px;padding:2px 5px;border-radius:6px;background:var(--p-glow);color:var(--p);font-weight:700">+1일</button>` : ''}
             <button class="tc-action-btn" onclick="event.stopPropagation();copyTaskText('${t.id}')" title="클립보드 복사"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
             <button class="tc-action-btn" onclick="event.stopPropagation();openEditTaskModal('${t.id}')" title="편집"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
             <button class="tc-action-btn del" onclick="event.stopPropagation();deleteTask('${t.id}','${selectedDate}')" title="삭제"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>
           </div>
           <div class="check-circle${t.completed ? ' checked' : ''}" onclick="event.stopPropagation();toggleTask('${t.date || ''}','${escStr(t.title)}','${selectedDate}')">
-            ${t.completed ? '<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
+            ${t.completed ? '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
           </div>
         </div>
       </div>
@@ -6698,6 +6717,25 @@
             }
             save(); render();
             await syncTaskToSupabase(t);
+        }
+
+        // 태스크를 다음날로 하루 미루기
+        async function postponeTask(id) {
+            const idx = tasks.findIndex(x => x.id === id);
+            if (idx < 0) return;
+            const t = tasks[idx];
+            const addDay = (dateStr) => {
+                const d = new Date(dateStr);
+                d.setDate(d.getDate() + 1);
+                return formatDate(d);
+            };
+            const updated = (t.dateFrom && t.dateTo)
+                ? { ...t, dateFrom: addDay(t.dateFrom), dateTo: addDay(t.dateTo), date: addDay(t.date || t.dateFrom), dirty: true }
+                : { ...t, date: addDay(t.date), dirty: true };
+            tasks[idx] = updated;
+            save(); render();
+            await syncTaskToSupabase(updated);
+            showToast('📅 태스크를 하루 미뤘어요: ' + updated.date, 'ok');
         }
 
         // 기간 일정에서 특정 날짜 하루만 범위에서 잘라내기 (앞/뒤/중간 분리)
