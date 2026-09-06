@@ -11,12 +11,12 @@
 
 ## 코드 전체 원복
 
-변경 전 기준: `master`, `d922529`.
+변경 전 기준: `backup/before-calm-design-20260907`, `d922529`.
 디자인 브랜치: `design/calm-workspace`.
 작업 폴더에 추가 수정사항이 없다면 다음 명령으로 원본을 열 수 있습니다.
 
 ```powershell
-git switch master
+git switch backup/before-calm-design-20260907
 ```
 
 새 디자인을 다시 열려면:
@@ -42,7 +42,7 @@ git switch design/calm-workspace
 - 데스크톱 / 390px 모바일 / 다크모드 화면 확인
 - 기존 디자인 전환과 새로고침 후 유지 확인
 - Google OAuth와 실제 Supabase 동기화는 검증하지 않았으며 수정하지 않음
-- 배포 / 푸시하지 않은 로컬 변경
+- 사용자 승인 후 master에 반영. 운영 배포 여부는 호스팅 서비스에서 별도 확인 필요.
 
 ## 디자인 참고
 
@@ -50,3 +50,5 @@ git switch design/calm-workspace
 
 - https://www.creativebloq.com/design/canvas-2026-trend-predictions-have-filled-me-with-hope
 - https://www.moburst.com/blog/top-mobile-web-design-trends/
+
+운영 브랜치에서 디자인 변경을 취소하려면 디자인 커밋에 대해 git revert 77d4f08을 실행하고 master를 푸시합니다. 후속 변경이 있으면 충돌을 먼저 검토하세요.
