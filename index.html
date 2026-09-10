@@ -8330,7 +8330,7 @@ button,[role=button],input,select,textarea { touch-action:manipulation; }
         }
         function exportData() {
             const data = {
-                tasks, memos, links, catColors, memoCats, checklistItems, weatherLoc,
+                tasks, memos, quotes, quoteCats, links, catColors, memoCats, checklistItems, weatherLoc,
                 exportedAt: new Date().toISOString()
             };
             const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -8365,12 +8365,21 @@ button,[role=button],input,select,textarea { touch-action:manipulation; }
                             const existingIds = new Set(memos.map(m => m.id));
                             data.memos.forEach(m => { if (!existingIds.has(m.id)) memos.push(m); });
                         }
+                        if (Array.isArray(data.quotes)) {
+                            const existingIds = new Set(quotes.map(q => q.id));
+                            data.quotes.forEach(q => { if (q && q.id && !existingIds.has(q.id)) quotes.push(q); });
+                        }
+                        if (data.quoteCats && typeof data.quoteCats === 'object') {
+                            quoteCats = { ...quoteCats, ...data.quoteCats };
+                        }
                         showToast('데이터가 병합되었습니다 📂', 'ok');
                     } else {
                         // Overwrite
                         if (confirm('정말 기존 데이터를 모두 삭제하고 덮어씌울까요?')) {
                             tasks = data.tasks || [];
                             memos = data.memos || [];
+                            quotes = Array.isArray(data.quotes) ? data.quotes : [];
+                            quoteCats = data.quoteCats || quoteCats;
                             links = data.links || links;
                             catColors = data.catColors || catColors;
                             memoCats = data.memoCats || memoCats;
@@ -9189,7 +9198,12 @@ button,[role=button],input,select,textarea { touch-action:manipulation; }
         <h4 style="font-family:'Outfit';font-size:18px;font-weight:900;margin-bottom:4px">✨ 좋은글 모음</h4>
         <div style="font-size:11px;color:var(--txt3)">${filteredQuotes.length}개의 좋은글이 있습니다</div>
       </div>
-      <button class="btn btn-warn" onclick="openQuoteModal()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> 좋은글 추가</button>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">
+        <input type="file" id="quote-import-input" accept=".json" style="display:none" onchange="importQuotes(event)">
+        <button class="btn btn-ghost" onclick="document.getElementById('quote-import-input').click()">좋은글 가져오기</button>
+        <button class="btn btn-ghost" onclick="exportQuotes()">좋은글 백업</button>
+        <button class="btn btn-warn" onclick="openQuoteModal()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="19" y2="12"/><line x1="19" y1="12" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> 좋은글 추가</button>
+      </div>
     </div>
     <div class="memo-layout">
       <div class="memo-main">
@@ -9253,6 +9267,41 @@ button,[role=button],input,select,textarea { touch-action:manipulation; }
         function setQuoteFilter(cat) {
             quoteCategoryFilter = cat;
             render();
+        }
+
+        function exportQuotes() {
+            const data = { quotes, quoteCats, exportedAt: new Date().toISOString(), type: 'good-quotes' };
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = `good_quotes_${formatDate(new Date())}.json`; a.click();
+            URL.revokeObjectURL(url);
+            showToast('좋은글이 백업되었습니다 💾', 'ok');
+        }
+
+        function importQuotes(event) {
+            const file = event.target.files[0];
+            event.target.value = '';
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = e => {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (!Array.isArray(data.quotes)) throw new Error('quotes missing');
+                    const merge = confirm('기존 좋은글에 추가하시겠습니까?\n취소하면 현재 좋은글을 백업 파일로 교체합니다.');
+                    if (merge) {
+                        const ids = new Set(quotes.map(q => q.id));
+                        data.quotes.forEach(q => { if (q && q.id && !ids.has(q.id)) quotes.push(q); });
+                        if (data.quoteCats) quoteCats = { ...quoteCats, ...data.quoteCats };
+                    } else if (confirm('현재 좋은글을 모두 교체할까요?')) {
+                        quotes = data.quotes;
+                        if (data.quoteCats) quoteCats = data.quoteCats;
+                    } else return;
+                    save(); render();
+                    showToast('좋은글을 불러왔습니다 📂', 'ok');
+                } catch (err) { showToast('좋은글 백업 파일 형식이 잘못되었습니다.', 'err'); }
+            };
+            reader.readAsText(file);
         }
 
         function openQuoteModal() {
@@ -9919,6 +9968,9 @@ button,[role=button],input,select,textarea { touch-action:manipulation; }
             <div style="font-size: 44px; line-height: 1; color: var(--p); opacity: 0.25; font-family: Georgia, serif; margin-top: -24px; margin-bottom: 16px; text-align: right; font-weight: 900;">”</div>
             <div id="quote-popup-author" style="font-size: 13px; color: var(--txt2); margin-bottom: 32px; font-weight: 700; letter-spacing: 0.5px;"></div>
             <div style="display: flex; gap: 12px; justify-content: center; margin-top: 10px;">
+                <button class="btn btn-ghost" style="padding: 12px 24px; border-radius: 14px; font-size: 12px; font-weight: 800; border: 1.5px solid var(--border); display: flex; align-items: center; gap: 6px;" onclick="closeModals(); openQuoteEdit(currentPopupQuoteId)">
+                    ✏️ 편집하기
+                </button>
                 <button class="btn btn-ghost" style="padding: 12px 24px; border-radius: 14px; font-size: 12px; font-weight: 800; border: 1.5px solid var(--border); display: flex; align-items: center; gap: 6px;" onclick="copyCurrentPopupQuote()">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                         <rect x="9" y="9" width="13" height="13" rx="2"/>
