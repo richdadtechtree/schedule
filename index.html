@@ -4516,7 +4516,7 @@ button,[role=button],input,select,textarea { touch-action:manipulation; }
                     <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
                 </svg> 시스템 설정</div>
             <div class="sidebar-version" style="margin-top: 8px; padding: 6px 8px 0; border-top: 1px dashed var(--border2); display: flex; justify-content: space-between; font-size: 9px; color: var(--txt3); font-weight: 700; opacity: 0.8;">
-                <span>v1.6.17</span>
+                <span>v1.6.18</span>
                 <span>2026-10-15</span>
             </div>
         </div>
@@ -6071,11 +6071,9 @@ button,[role=button],input,select,textarea { touch-action:manipulation; }
             el.textContent = map[state] || '';
         }
 
-        // 서버로 한 편 올리기. (user_id + entry_date)가 같으면 덮어쓰기(upsert)
-        async function syncDiaryToSupabase(entry) {
-            if (!supabaseClient || !currentUser) { setDiaryStatus('local-only'); return false; }
-            const sentAt = entry.updated_at;
-            const { error } = await supabaseClient.from('diaries').upsert({
+        // 서버에 보낼 한 줄 만들기
+        function diaryPayload(entry) {
+            return {
                 user_id: currentUser.id,
                 entry_date: entry.entry_date,
                 title: entry.title || '',
@@ -6085,8 +6083,15 @@ button,[role=button],input,select,textarea { touch-action:manipulation; }
                 bad: entry.bad || '',
                 review: entry.review || '',
                 sorry_kid: entry.sorry_kid || '',
-                updated_at: sentAt
-            }, { onConflict: 'user_id,entry_date' });
+                updated_at: entry.updated_at
+            };
+        }
+
+        // 서버로 한 편 올리기. (user_id + entry_date)가 같으면 덮어쓰기(upsert)
+        async function syncDiaryToSupabase(entry) {
+            if (!supabaseClient || !currentUser) { setDiaryStatus('local-only'); return false; }
+            const sentAt = entry.updated_at;
+            const { error } = await supabaseClient.from('diaries').upsert(diaryPayload(entry), { onConflict: 'user_id,entry_date' });
             if (error) { diaryHandleError(error); setDiaryStatus('error'); return false; }
             // 올리는 사이에 또 고쳤다면 dirty 를 유지해서 다음 저장 때 다시 올림
             if (entry.updated_at === sentAt) entry.dirty = false;
@@ -6204,6 +6209,7 @@ button,[role=button],input,select,textarea { touch-action:manipulation; }
                 </div>`;
             }).join('') || '<div class="empty" style="padding:24px 8px">아직 쓴 일기가 없어요.</div>';
             renderDiaryCalendar();
+            renderDiaryBackupInfo();
         }
 
         // 달력: 일기가 있는 날은 색칠 + 기분 이모지, 누르면 그날 일기를 엽니다
@@ -6243,6 +6249,164 @@ button,[role=button],input,select,textarea { touch-action:manipulation; }
             const dt = new Date(y, m - 1 + delta, 1);
             diaryCalMonth = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`;
             renderDiaryCalendar();
+        }
+
+        // ===================== 일기 백업 (엑셀) =====================
+        // 엑셀 파일 만들기/읽기에는 SheetJS(xlsx-js-style) 라이브러리를 씁니다.
+        // 백업 버튼을 누를 때 처음 한 번만 내려받고, 파일이 바뀌어 있으면 실행되지 않도록 무결성 해시(SRI)를 확인합니다.
+        const DIARY_XLSX_URL = 'https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js';
+        const DIARY_XLSX_SRI = 'sha384-OUW9euuUyxyHcAhTqbhI+Iyb8LMssXt/cpz0yXhs9UWG2/R/uaWdakx/4cfww7Vb';
+        const DIARY_COLS = ['날짜', '요일', '기분', '제목', '오늘의 기록', '좋았던 점', '아쉬운 점', '복기할 점', '아이에게 미안한 점', '마지막 수정'];
+        let diaryXlsxPromise = null;
+
+        function diaryLoadXlsx() {
+            if (window.XLSX) return Promise.resolve(window.XLSX);
+            if (!diaryXlsxPromise) {
+                diaryXlsxPromise = new Promise((resolve, reject) => {
+                    const sc = document.createElement('script');
+                    sc.src = DIARY_XLSX_URL; sc.integrity = DIARY_XLSX_SRI; sc.crossOrigin = 'anonymous';
+                    sc.onload = () => window.XLSX ? resolve(window.XLSX) : (diaryXlsxPromise = null, reject(new Error('엑셀 라이브러리 초기화 실패')));
+                    sc.onerror = () => { diaryXlsxPromise = null; reject(new Error('엑셀 라이브러리를 불러오지 못했어요 (인터넷 연결을 확인해 주세요)')); };
+                    document.head.appendChild(sc);
+                });
+            }
+            return diaryXlsxPromise;
+        }
+
+        // 일기 → 표(행) 모양. 날짜 오래된 순으로 정렬
+        function diaryBackupRows() {
+            return diaries.slice().sort((a, b) => a.entry_date.localeCompare(b.entry_date)).map(d => {
+                const m = DIARY_MOODS.find(x => x.k === d.mood);
+                const [y, mo, da] = d.entry_date.split('-').map(Number);
+                return {
+                    '날짜': d.entry_date,
+                    '요일': ['일', '월', '화', '수', '목', '금', '토'][new Date(y, mo - 1, da).getDay()],
+                    '기분': m ? `${m.e} ${m.l}` : '',
+                    '제목': d.title || '',
+                    '오늘의 기록': d.content || '',
+                    '좋았던 점': d.good || '',
+                    '아쉬운 점': d.bad || '',
+                    '복기할 점': d.review || '',
+                    '아이에게 미안한 점': d.sorry_kid || '',
+                    '마지막 수정': d.updated_at || ''
+                };
+            });
+        }
+
+        function diaryDownload(blob, filename) {
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob); a.download = filename;
+            document.body.appendChild(a); a.click(); a.remove();
+            setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+        }
+
+        // 엑셀을 못 불러올 때(오프라인 등)를 위한 CSV 대체 저장. 맨 앞 BOM 덕분에 엑셀에서 한글이 안 깨집니다.
+        function diaryExportCsv(rows) {
+            const cell = v => { let t = String(v ?? ''); if (/^[=+\-@]/.test(t)) t = "'" + t; return '"' + t.replace(/"/g, '""') + '"'; };
+            const csv = '\ufeff' + [DIARY_COLS.map(cell).join(',')].concat(rows.map(r => DIARY_COLS.map(c => cell(r[c])).join(','))).join('\r\n');
+            diaryDownload(new Blob([csv], { type: 'text/csv;charset=utf-8' }), `vibe-diary-backup-${diaryToday()}.csv`);
+        }
+
+        async function exportDiaryXlsx() {
+            await saveDiaryNow(); // 쓰던 글까지 포함해서 백업
+            if (!diaries.length) { showToast('백업할 일기가 아직 없어요'); return; }
+            const rows = diaryBackupRows();
+            let kind = 'xlsx';
+            try {
+                const X = await diaryLoadXlsx();
+                const ws = X.utils.json_to_sheet(rows, { header: DIARY_COLS });
+                ws['!cols'] = [12, 6, 10, 22, 50, 36, 36, 36, 36, 24].map(wch => ({ wch }));
+                const range = X.utils.decode_range(ws['!ref']);
+                for (let R = range.s.r; R <= range.e.r; R++) for (let C = range.s.c; C <= range.e.c; C++) {
+                    const c = ws[X.utils.encode_cell({ r: R, c: C })];
+                    if (!c) continue;
+                    c.s = R === 0 ? { font: { bold: true }, fill: { fgColor: { rgb: 'E3EEE6' } }, alignment: { vertical: 'center' } }
+                        : { alignment: { wrapText: true, vertical: 'top' } }; // 긴 글은 줄바꿈해서 보이게
+                }
+                const wb = X.utils.book_new();
+                X.utils.book_append_sheet(wb, ws, '일기');
+                X.writeFile(wb, `vibe-diary-backup-${diaryToday()}.xlsx`);
+            } catch (e) {
+                console.error('엑셀 백업 실패, CSV로 대체:', e);
+                kind = 'csv';
+                diaryExportCsv(rows);
+            }
+            try { localStorage.setItem('pne_diary_last_backup', JSON.stringify({ date: diaryToday(), count: rows.length })); } catch (e) { }
+            renderDiaryBackupInfo();
+            showToast(kind === 'xlsx' ? `일기 ${rows.length}편을 엑셀로 백업했어요` : `엑셀 라이브러리를 못 불러와 CSV 파일로 백업했어요 (${rows.length}편)`, 3500);
+        }
+
+        // 날짜 칸 해석: 2026-10-15 / 2026/10/5 / 2026.10.5 형태를 받아들임
+        function diaryParseDate(v) {
+            const m = String(v ?? '').trim().match(/^(\d{4})[-/.]\s*(\d{1,2})[-/.]\s*(\d{1,2})/);
+            if (!m) return null;
+            const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
+            const dt = new Date(y, mo - 1, d);
+            if (dt.getFullYear() !== y || dt.getMonth() !== mo - 1 || dt.getDate() !== d) return null;
+            return `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        }
+
+        async function importDiaryXlsx(ev) {
+            const file = ev.target.files && ev.target.files[0];
+            ev.target.value = ''; // 같은 파일을 다시 골라도 동작하도록 초기화
+            if (!file) return;
+            try {
+                const X = await diaryLoadXlsx();
+                const wb = X.read(await file.arrayBuffer(), { type: 'array' });
+                const rows = X.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '', raw: false });
+                const incoming = []; let skipped = 0;
+                for (const r of rows) {
+                    const date = diaryParseDate(r['날짜']);
+                    const moodTxt = String(r['기분'] || '');
+                    const m = DIARY_MOODS.find(x => moodTxt.includes(x.l) || moodTxt.includes(x.e) || moodTxt === x.k);
+                    const e = { entry_date: date, title: String(r['제목'] || ''), content: String(r['오늘의 기록'] || ''), mood: m ? m.k : '',
+                        good: String(r['좋았던 점'] || ''), bad: String(r['아쉬운 점'] || ''), review: String(r['복기할 점'] || ''), sorry_kid: String(r['아이에게 미안한 점'] || '') };
+                    if (!date) { if (Object.values(r).some(v => String(v).trim())) skipped++; continue; }
+                    if (!e.title && !e.content && !e.mood && !e.good && !e.bad && !e.review && !e.sorry_kid) continue;
+                    incoming.push(e);
+                }
+                if (!incoming.length) { showToast('불러올 일기를 찾지 못했어요. 이 앱에서 백업한 엑셀 파일인지 확인해 주세요', 4500); return; }
+                await saveDiaryNow();
+                const dup = incoming.filter(e => diaryFind(e.entry_date)).length;
+                let overwrite = false;
+                if (dup) overwrite = confirm(`일기 ${incoming.length}편을 읽었어요.\n그중 ${dup}편은 이미 일기가 있는 날짜예요.\n\n[확인] 이미 있는 날짜도 파일 내용으로 덮어쓰기\n[취소] 없는 날짜만 추가`);
+                const changed = [];
+                for (const e of incoming) {
+                    const cur = diaryFind(e.entry_date);
+                    if (cur && !overwrite) continue;
+                    const target = cur || (diaries.push({ entry_date: e.entry_date }), diaries[diaries.length - 1]);
+                    Object.assign(target, e, { updated_at: new Date().toISOString(), dirty: true });
+                    changed.push(target);
+                }
+                diaryPersist();
+                // 로그인 상태면 서버에도 100편씩 묶어서 저장
+                if (supabaseClient && currentUser && changed.length) {
+                    for (let i = 0; i < changed.length; i += 100) {
+                        const chunk = changed.slice(i, i + 100), sentAt = chunk.map(c => c.updated_at);
+                        const { error } = await supabaseClient.from('diaries').upsert(chunk.map(diaryPayload), { onConflict: 'user_id,entry_date' });
+                        if (error) { diaryHandleError(error); break; }
+                        chunk.forEach((c, j) => { if (c.updated_at === sentAt[j]) c.dirty = false; });
+                    }
+                    diaryPersist();
+                }
+                renderDiaryView(true);
+                showToast(`일기 ${changed.length}편을 불러왔어요${incoming.length - changed.length ? ` (기존 ${incoming.length - changed.length}편은 그대로 둠)` : ''}${skipped ? ` · 날짜를 읽지 못한 ${skipped}줄은 건너뜀` : ''}`, 5000);
+            } catch (e) {
+                console.error('일기 불러오기 실패:', e);
+                showToast('불러오기 실패: ' + (e.message || e), 4500);
+            }
+        }
+
+        // 백업 카드의 안내 문구 (마지막 백업 날짜, 한 달 넘게 안 했으면 알림)
+        function renderDiaryBackupInfo() {
+            const el = document.getElementById('diary-backup-info');
+            if (!el) return;
+            let last = null;
+            try { last = JSON.parse(localStorage.getItem('pne_diary_last_backup') || 'null'); } catch (e) { }
+            const days = last ? Math.floor((new Date(diaryToday()) - new Date(last.date)) / 86400000) : null;
+            const stale = diaries.length > 0 && (last === null || days > 30);
+            el.innerHTML = `현재 일기 ${diaries.length}편<br>` + (last ? `마지막 백업: ${diaryEsc(last.date)} (${last.count}편)` : '아직 백업한 적이 없어요')
+                + (stale ? `<br><span style="color:#e5484d;font-weight:700">⚠ ${last ? '한 달 넘게' : ''} 백업하지 않았어요. 백업을 권해요.</span>` : '');
         }
 
         // Ctrl/Cmd+S 로 바로 저장
@@ -6320,10 +6484,21 @@ button,[role=button],input,select,textarea { touch-action:manipulation; }
           <button class="btn btn-warn" onclick="saveDiaryNow()">저장</button>
         </div>
       </div>
+      <div style="display:flex;flex-direction:column;gap:20px;min-width:0">
       <div class="dy-card animate animate-d1" style="padding:14px 10px">
         <div id="diary-cal" onmousedown="event.preventDefault()"></div>
         <div style="font-size:12px;font-weight:800;color:var(--txt2);padding:14px 12px 6px;margin-top:10px;border-top:1px solid var(--border2)">지난 일기</div>
         <div id="diary-list" style="max-height:340px;overflow-y:auto" onmousedown="event.preventDefault()"></div>
+      </div>
+      <div class="dy-card animate animate-d2" style="padding:16px">
+        <div style="font-size:12px;font-weight:800;color:var(--txt2);margin-bottom:8px">🗂 백업</div>
+        <div id="diary-backup-info" style="font-size:11px;color:var(--txt3);line-height:1.7;margin-bottom:12px"></div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <input type="file" id="diary-import-input" accept=".xlsx,.xls" style="display:none" onchange="importDiaryXlsx(event)">
+          <button class="btn btn-warn" onclick="exportDiaryXlsx()">엑셀로 백업</button>
+          <button class="btn btn-ghost" onclick="document.getElementById('diary-import-input').click()">엑셀에서 불러오기</button>
+        </div>
+      </div>
       </div>
     </div>`;
             renderDiaryList();
