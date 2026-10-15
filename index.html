@@ -4516,8 +4516,8 @@ button,[role=button],input,select,textarea { touch-action:manipulation; }
                     <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
                 </svg> 시스템 설정</div>
             <div class="sidebar-version" style="margin-top: 8px; padding: 6px 8px 0; border-top: 1px dashed var(--border2); display: flex; justify-content: space-between; font-size: 9px; color: var(--txt3); font-weight: 700; opacity: 0.8;">
-                <span>v1.6.15</span>
-                <span>2026-09-03</span>
+                <span>v1.6.16</span>
+                <span>2026-10-15</span>
             </div>
         </div>
     </aside>
@@ -4564,6 +4564,11 @@ button,[role=button],input,select,textarea { touch-action:manipulation; }
                         fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
                     </svg> 좋은글 모음</div>
+                <div class="nav-item" onclick="switchView('diary')"><svg width="14" height="14" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                    </svg> 일기</div>
                 <div class="nav-item" onclick="switchView('books')"><svg width="14" height="14" viewBox="0 0 24 24"
                         fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
@@ -4602,6 +4607,7 @@ button,[role=button],input,select,textarea { touch-action:manipulation; }
             <div id="v-matrix" class="view"></div>
             <div id="v-memos" class="view"></div>
             <div id="v-quotes" class="view"></div>
+            <div id="v-diary" class="view"></div>
             <div id="v-books" class="view"></div>
             <div id="v-analytics" class="view"></div>
 
@@ -6002,11 +6008,250 @@ button,[role=button],input,select,textarea { touch-action:manipulation; }
             }
         }
 
+        // ===================== DIARY (일기) =====================
+        // 구조: 하루에 한 편. 기기(localStorage)에 먼저 저장하고, 로그인 상태면 Supabase 'diaries' 테이블에도 저장합니다.
+        // dirty=true 는 "아직 서버에 못 올린 글"이라는 뜻이라, 오프라인에서 쓴 일기도 다음 접속 때 올라갑니다.
+        const DIARY_MOODS = [
+            { k: 'happy', e: '😊', l: '좋음' }, { k: 'calm', e: '😌', l: '평온' }, { k: 'soso', e: '😐', l: '보통' },
+            { k: 'tired', e: '😴', l: '피곤' }, { k: 'sad', e: '😢', l: '슬픔' }, { k: 'angry', e: '😠', l: '화남' }
+        ];
+        let diaries = [];
+        try { diaries = JSON.parse(localStorage.getItem('pne_diaries') || '[]'); } catch (e) { diaries = []; }
+        let diaryDate = null;          // 지금 화면에 열린 날짜 (YYYY-MM-DD)
+        let diaryLoaded = false;       // 이번 접속에서 서버와 한 번 맞췄는지
+        let diaryLoading = false;      // 서버 불러오는 중 (중복 호출 방지)
+        let diarySaveTimer = null;     // 자동 저장 타이머
+        let diaryErrorShown = false;   // 같은 오류 토스트를 반복해서 띄우지 않기 위함
+
+        function diaryToday() { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); }
+        function diaryEsc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+        function diaryPersist() { try { localStorage.setItem('pne_diaries', JSON.stringify(diaries)); } catch (e) { console.error('일기 로컬 저장 실패:', e); } }
+        function diaryFind(date) { return diaries.find(d => d.entry_date === date); }
+        function diaryLabel(date) {
+            const [y, m, d] = date.split('-').map(Number);
+            return `${y}년 ${m}월 ${d}일 (${['일', '월', '화', '수', '목', '금', '토'][new Date(y, m - 1, d).getDay()]})`;
+        }
+        function diaryShift(date, delta) {
+            const [y, m, d] = date.split('-').map(Number);
+            const dt = new Date(y, m - 1, d + delta);
+            return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+        }
+        function diaryHandleError(error) {
+            console.error('일기 서버 오류:', error);
+            if (diaryErrorShown) return;
+            diaryErrorShown = true;
+            const missing = error && (error.code === '42P01' || error.code === 'PGRST205' || /diaries/.test(error.message || '') && /not exist|schema cache/.test(error.message || ''));
+            showToast(missing ? '일기 테이블(diaries)이 아직 없어요. Supabase에서 마이그레이션을 먼저 실행해 주세요.' : '일기 클라우드 저장 실패: ' + (error.message || '알 수 없는 오류'), 4500);
+        }
+
+        // 저장 상태 문구 (편집 화면 우측 상단)
+        function setDiaryStatus(state) {
+            const el = document.getElementById('diary-status');
+            if (!el) return;
+            const t = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+            const map = {
+                typing: '입력 중…',
+                local: '이 기기에 저장됨 · 클라우드 저장 중…',
+                saved: `클라우드 저장됨 ✓ ${t}`,
+                'local-only': '이 기기에만 저장됨 (로그인하면 클라우드에도 저장돼요)',
+                error: '클라우드 저장 실패 · 이 기기에는 저장됨'
+            };
+            el.textContent = map[state] || '';
+        }
+
+        // 서버로 한 편 올리기. (user_id + entry_date)가 같으면 덮어쓰기(upsert)
+        async function syncDiaryToSupabase(entry) {
+            if (!supabaseClient || !currentUser) { setDiaryStatus('local-only'); return false; }
+            const sentAt = entry.updated_at;
+            const { error } = await supabaseClient.from('diaries').upsert({
+                user_id: currentUser.id,
+                entry_date: entry.entry_date,
+                title: entry.title || '',
+                mood: entry.mood || '',
+                content: entry.content || '',
+                updated_at: sentAt
+            }, { onConflict: 'user_id,entry_date' });
+            if (error) { diaryHandleError(error); setDiaryStatus('error'); return false; }
+            // 올리는 사이에 또 고쳤다면 dirty 를 유지해서 다음 저장 때 다시 올림
+            if (entry.updated_at === sentAt) entry.dirty = false;
+            diaryPersist();
+            setDiaryStatus('saved');
+            return true;
+        }
+
+        // 화면의 입력값을 읽어 저장 (기기 → 서버 순서)
+        async function saveDiaryNow() {
+            clearTimeout(diarySaveTimer); diarySaveTimer = null;
+            const ed = document.getElementById('diary-editor');
+            const tEl = document.getElementById('diary-title'), cEl = document.getElementById('diary-content');
+            if (!ed || !tEl || !cEl) return;
+            // 아래 값은 첫 await 이전에 전부 읽어 두므로, 저장 직후 날짜를 바꿔도 안전합니다.
+            const date = ed.dataset.date, mood = ed.dataset.mood || '';
+            const title = tEl.value.trim(), content = cEl.value;
+            let entry = diaryFind(date);
+            if (!entry && !title && !content.trim() && !mood) { setDiaryStatus(''); return; }
+            if (entry && !entry.dirty && entry.title === title && entry.content === content && entry.mood === mood) { setDiaryStatus(currentUser ? 'saved' : 'local-only'); return; }
+            if (!entry) { entry = { entry_date: date }; diaries.push(entry); }
+            Object.assign(entry, { title, content, mood, updated_at: new Date().toISOString(), dirty: true });
+            diaryPersist();
+            renderDiaryList();
+            setDiaryStatus(currentUser ? 'local' : 'local-only');
+            await syncDiaryToSupabase(entry);
+        }
+
+        function diaryEdited() {
+            setDiaryStatus('typing');
+            clearTimeout(diarySaveTimer);
+            diarySaveTimer = setTimeout(saveDiaryNow, 1200); // 입력이 1.2초 멈추면 자동 저장
+        }
+
+        function pickDiaryMood(k) {
+            const ed = document.getElementById('diary-editor');
+            if (!ed) return;
+            ed.dataset.mood = ed.dataset.mood === k ? '' : k; // 같은 기분을 다시 누르면 해제
+            ed.querySelectorAll('.dy-mood').forEach(b => b.classList.toggle('on', b.dataset.mood === ed.dataset.mood));
+            diaryEdited();
+        }
+
+        function selectDiaryDate(date) {
+            if (!date) return;
+            saveDiaryNow(); // 열려 있던 글 먼저 저장
+            diaryDate = date;
+            renderDiaryView(true);
+        }
+
+        async function deleteDiary(date) {
+            if (!confirm(`${diaryLabel(date)} 일기를 삭제할까요?\n삭제하면 되돌릴 수 없어요.`)) return;
+            clearTimeout(diarySaveTimer); diarySaveTimer = null;
+            diaries = diaries.filter(d => d.entry_date !== date);
+            diaryPersist();
+            renderDiaryView(true);
+            if (supabaseClient && currentUser) {
+                const { error } = await supabaseClient.from('diaries').delete().eq('user_id', currentUser.id).eq('entry_date', date);
+                if (error) diaryHandleError(error); else showToast('일기를 삭제했어요');
+            } else showToast('일기를 삭제했어요');
+        }
+
+        // 서버와 맞추기: 서버 글은 가져오고, 아직 못 올린 내 글(dirty)은 올림
+        async function loadDiaries() {
+            if (!supabaseClient || !currentUser) return;
+            // 같은 기기에서 다른 계정으로 로그인했다면, 이전 계정의 일기가 섞여 올라가지 않도록 비움
+            const owner = localStorage.getItem('pne_diaries_uid');
+            if (owner && owner !== currentUser.id) { diaries = []; diaryPersist(); }
+            try { localStorage.setItem('pne_diaries_uid', currentUser.id); } catch (e) { }
+
+            const { data, error } = await supabaseClient.from('diaries')
+                .select('entry_date,title,mood,content,updated_at')
+                .eq('user_id', currentUser.id).order('entry_date', { ascending: false });
+            if (error) { diaryHandleError(error); return; }
+
+            const remoteDates = new Set();
+            for (const r of data) {
+                remoteDates.add(r.entry_date);
+                const l = diaryFind(r.entry_date);
+                if (!l) diaries.push({ ...r, dirty: false });
+                else if (!l.dirty && new Date(r.updated_at) > new Date(l.updated_at || 0)) Object.assign(l, r, { dirty: false });
+            }
+            // 서버에 없고 이미 동기화가 끝났던 글 = 다른 기기에서 삭제한 글 → 이 기기에서도 제거
+            diaries = diaries.filter(l => l.dirty || remoteDates.has(l.entry_date));
+            diaryPersist();
+            diaryLoaded = true;
+            for (const l of diaries.filter(x => x.dirty)) await syncDiaryToSupabase(l);
+            if (currentView === 'diary') renderDiaryView();
+        }
+
+        // 왼쪽(또는 아래) 목록만 다시 그림 — 입력 중인 편집창은 건드리지 않음
+        function renderDiaryList() {
+            const listEl = document.getElementById('diary-list'), statEl = document.getElementById('diary-stats');
+            if (!listEl) return;
+            const q = (searchQuery || '').toLowerCase();
+            const list = diaries.filter(d => !q || (d.title || '').toLowerCase().includes(q) || (d.content || '').toLowerCase().includes(q))
+                .sort((a, b) => b.entry_date.localeCompare(a.entry_date));
+            const month = diaryToday().slice(0, 7);
+            if (statEl) statEl.textContent = `총 ${diaries.length}편 · 이번 달 ${diaries.filter(d => d.entry_date.startsWith(month)).length}편`;
+            listEl.innerHTML = list.map(d => {
+                const mood = DIARY_MOODS.find(m => m.k === d.mood);
+                const preview = (d.title || (d.content || '').trim().split('\n')[0] || '(내용 없음)').slice(0, 40);
+                return `<div class="dy-item ${d.entry_date === diaryDate ? 'active' : ''}" onclick="selectDiaryDate('${d.entry_date}')">
+                    <span class="dy-item-date">${d.entry_date.slice(5).replace('-', '/')}</span>
+                    <span class="dy-item-txt">${diaryEsc(preview)}</span>
+                    <span>${mood ? mood.e : ''}${d.dirty ? '<span title="아직 클라우드에 올라가지 않았어요" style="color:var(--txt3)"> ●</span>' : ''}</span>
+                </div>`;
+            }).join('') || '<div class="empty" style="padding:24px 8px">아직 쓴 일기가 없어요.</div>';
+        }
+
+        function renderDiaryView(force) {
+            const area = document.getElementById('v-diary');
+            if (!diaryDate) diaryDate = diaryToday();
+            // 글을 쓰는 중에 다른 곳에서 render()가 불려도 입력한 글이 사라지지 않게 보호
+            const ae = document.activeElement;
+            if (!force && area.firstChild && ae && area.contains(ae) && (ae.tagName === 'TEXTAREA' || ae.tagName === 'INPUT')) { renderDiaryList(); return; }
+            if (currentUser && !diaryLoaded && !diaryLoading) { diaryLoading = true; loadDiaries().finally(() => { diaryLoading = false; }); }
+
+            const e = diaryFind(diaryDate) || { title: '', content: '', mood: '' };
+            area.innerHTML = `
+    <style>
+      .dy-wrap{display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:20px;align-items:start}
+      .dy-card{background:var(--surface);border:1px solid var(--border);border-radius:20px;box-shadow:var(--shadow);padding:22px 24px}
+      .dy-title{width:100%;border:none;border-bottom:1px solid var(--border2);background:transparent;color:var(--txt);font-size:18px;font-weight:800;padding:8px 2px;outline:none;font-family:inherit}
+      .dy-text{width:100%;min-height:360px;resize:vertical;border:none;background:transparent;color:var(--txt);font-size:15px;line-height:1.85;padding:14px 2px;outline:none;font-family:inherit;word-break:keep-all}
+      .dy-mood{border:1px solid var(--border);background:var(--surface);color:var(--txt2);border-radius:12px;padding:6px 10px;cursor:pointer;font-size:18px;display:inline-flex;flex-direction:column;align-items:center;gap:2px;min-width:52px;font-family:inherit}
+      .dy-mood span{font-size:10px;font-weight:700}
+      .dy-mood.on{border-color:var(--p);background:var(--p-glow);color:var(--p)}
+      .dy-item{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:12px;cursor:pointer;font-size:13px;color:var(--txt2)}
+      .dy-item:hover{background:var(--p-glow)}
+      .dy-item.active{background:var(--p-glow);color:var(--p);font-weight:700}
+      .dy-item-date{font-size:11px;color:var(--txt3);width:38px;flex-shrink:0}
+      .dy-item-txt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      @media (max-width:900px){.dy-wrap{grid-template-columns:minmax(0,1fr)}.dy-card{padding:18px 16px}}
+    </style>
+    <div class="sticky-add-header">
+      <div>
+        <h4 style="font-family:'Outfit';font-size:18px;font-weight:900;margin-bottom:4px">📖 일기</h4>
+        <div id="diary-stats" style="font-size:11px;color:var(--txt3)"></div>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
+        <button class="btn btn-ghost" onclick="selectDiaryDate(diaryShift(diaryDate,-1))" title="전날">◀</button>
+        <input type="date" value="${diaryDate}" onchange="selectDiaryDate(this.value)" style="padding:6px 8px;border:1px solid var(--border);border-radius:10px;background:var(--surface);color:var(--txt);font-family:inherit">
+        <button class="btn btn-ghost" onclick="selectDiaryDate(diaryShift(diaryDate,1))" title="다음날">▶</button>
+        <button class="btn btn-warn" onclick="selectDiaryDate(diaryToday())">오늘</button>
+      </div>
+    </div>
+    <div class="dy-wrap">
+      <div class="dy-card animate" id="diary-editor" data-date="${diaryDate}" data-mood="${diaryEsc(e.mood)}">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+          <div style="font-size:13px;font-weight:800;color:var(--txt2)">${diaryLabel(diaryDate)}</div>
+          <div id="diary-status" style="font-size:11px;color:var(--txt3)"></div>
+        </div>
+        ${currentUser ? '' : '<div style="font-size:12px;color:var(--txt3);margin-bottom:12px">로그인하지 않아서 이 기기에만 저장돼요. 로그인하면 클라우드에도 저장됩니다.</div>'}
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
+          ${DIARY_MOODS.map(m => `<button type="button" class="dy-mood ${e.mood === m.k ? 'on' : ''}" data-mood="${m.k}" onclick="pickDiaryMood('${m.k}')">${m.e}<span>${m.l}</span></button>`).join('')}
+        </div>
+        <input id="diary-title" class="dy-title" placeholder="제목 (선택)" value="${diaryEsc(e.title)}" oninput="diaryEdited()" onblur="saveDiaryNow()" onkeydown="if((event.ctrlKey||event.metaKey)&&event.key==='s'){event.preventDefault();saveDiaryNow();}">
+        <textarea id="diary-content" class="dy-text" placeholder="오늘 하루는 어땠나요?" oninput="diaryEdited()" onblur="saveDiaryNow()" onkeydown="if((event.ctrlKey||event.metaKey)&&event.key==='s'){event.preventDefault();saveDiaryNow();}">${diaryEsc(e.content)}</textarea>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+          <button class="btn btn-ghost" style="color:var(--danger)" onclick="deleteDiary(diaryDate)">삭제</button>
+          <button class="btn btn-warn" onclick="saveDiaryNow()">저장</button>
+        </div>
+      </div>
+      <div class="dy-card animate animate-d1" style="padding:14px 10px">
+        <div style="font-size:12px;font-weight:800;color:var(--txt2);padding:0 12px 8px">지난 일기</div>
+        <div id="diary-list"></div>
+      </div>
+    </div>`;
+            renderDiaryList();
+            setDiaryStatus(diaryFind(diaryDate) ? (diaryFind(diaryDate).dirty ? (currentUser ? 'local' : 'local-only') : 'saved') : '');
+        }
+
+        // 탭을 닫거나 다른 앱으로 넘어갈 때 아직 저장 안 된 글이 있으면 먼저 저장
+        window.addEventListener('beforeunload', () => { if (diarySaveTimer) saveDiaryNow(); });
+        document.addEventListener('visibilitychange', () => { if (document.hidden && diarySaveTimer) saveDiaryNow(); });
+
         // ===================== VIEW SWITCH =====================
         function switchView(view) {
             currentView = view;
             document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-            const navMap = { overview: '대시보드', kanban: '칸반', matrix: '전략', memos: '스마트', quotes: '좋은글', books: '책갈피', analytics: '리포트', lecture: '강의', settings: '시스템' };
+            const navMap = { overview: '대시보드', kanban: '칸반', matrix: '전략', memos: '스마트', quotes: '좋은글', diary: '일기', books: '책갈피', analytics: '리포트', lecture: '강의', settings: '시스템' };
             Array.from(document.querySelectorAll('.nav-item')).find(el => el.textContent.includes(navMap[view]))?.classList.add('active');
             document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
             document.getElementById('v-' + view).classList.add('active');
@@ -6044,6 +6289,7 @@ button,[role=button],input,select,textarea { touch-action:manipulation; }
             else if (currentView === 'matrix') renderMatrix(fTasks);
             else if (currentView === 'memos') renderMemosView(fMemos);
             else if (currentView === 'quotes') renderQuotesView();
+            else if (currentView === 'diary') renderDiaryView();
             else if (currentView === 'books') renderBooksView();
             else if (currentView === 'analytics') renderAnalytics(fTasks, fMemos);
             else if (currentView === 'settings') renderSettings();
