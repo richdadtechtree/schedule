@@ -4516,8 +4516,8 @@ button,[role=button],input,select,textarea { touch-action:manipulation; }
                     <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
                 </svg> 시스템 설정</div>
             <div class="sidebar-version" style="margin-top: 8px; padding: 6px 8px 0; border-top: 1px dashed var(--border2); display: flex; justify-content: space-between; font-size: 9px; color: var(--txt3); font-weight: 700; opacity: 0.8;">
-                <span>v1.6.18</span>
-                <span>2026-10-15</span>
+                <span>v1.6.19</span>
+                <span>2026-10-16</span>
             </div>
         </div>
     </aside>
@@ -6105,7 +6105,7 @@ button,[role=button],input,select,textarea { touch-action:manipulation; }
             clearTimeout(diarySaveTimer); diarySaveTimer = null;
             const ed = document.getElementById('diary-editor');
             const tEl = document.getElementById('diary-title'), cEl = document.getElementById('diary-content');
-            if (!ed || !tEl || !cEl) return;
+            if (!ed || !tEl || !cEl) return null;
             // 아래 값은 첫 await 이전에 전부 읽어 두므로, 저장 직후 날짜를 바꿔도 안전합니다.
             const date = ed.dataset.date;
             const vals = { title: tEl.value.trim(), content: cEl.value, mood: ed.dataset.mood || '' };
@@ -6113,18 +6113,63 @@ button,[role=button],input,select,textarea { touch-action:manipulation; }
             const keys = Object.keys(vals);
             let entry = diaryFind(date);
             const isEmpty = keys.every(k => !String(vals[k]).trim());
-            if (!entry && isEmpty) { setDiaryStatus(''); return; }
+            if (!entry && isEmpty) { setDiaryStatus(''); return 'empty'; }
             if (entry && keys.every(k => (entry[k] || '') === vals[k])) {
                 // 바뀐 게 없으면 목록/달력을 다시 그리지 않음 (누르던 버튼이 사라져 클릭이 씹히는 것 방지)
-                if (entry.dirty) await syncDiaryToSupabase(entry); else setDiaryStatus(currentUser ? 'saved' : 'local-only');
-                return;
+                if (entry.dirty) return await diarySyncResult(entry);
+                setDiaryStatus(currentUser ? 'saved' : 'local-only');
+                return 'cloud'; // 이미 서버까지 저장이 끝난 상태
             }
             if (!entry) { entry = { entry_date: date }; diaries.push(entry); }
             Object.assign(entry, vals, { updated_at: new Date().toISOString(), dirty: true });
             diaryPersist();
             renderDiaryList();
             setDiaryStatus(currentUser ? 'local' : 'local-only');
-            await syncDiaryToSupabase(entry);
+            return await diarySyncResult(entry);
+        }
+
+        // 서버 저장을 시도하고 결과를 한 단어로 돌려줌: 'cloud'(서버까지 저장) / 'local-only'(로그인 안 함, 이 기기에만) / 'error'(서버 저장 실패)
+        async function diarySyncResult(entry) {
+            if (!supabaseClient || !currentUser) { setDiaryStatus('local-only'); return 'local-only'; }
+            return (await syncDiaryToSupabase(entry)) ? 'cloud' : 'error';
+        }
+
+        // [저장] 버튼 / Ctrl+S: 저장하고 결과를 팝업으로 알려줌 (자동 저장은 조용히 동작)
+        async function saveDiaryManual() {
+            const result = await saveDiaryNow();
+            if (result) showDiarySavePopup(result);
+        }
+
+        // 저장 결과 팝업. 화면 위쪽 가운데에 잠깐 떴다가 사라지고, 누르면 바로 닫힘
+        let diaryPopTimer = null;
+        function showDiarySavePopup(result) {
+            const t = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+            const date = document.getElementById('diary-editor')?.dataset.date;
+            const label = date ? diaryLabel(date) : '';
+            const M = {
+                cloud: { icon: '✓', color: '#2f9e6b', title: '저장했어요', sub: `${label}<br>클라우드에도 저장됐어요 · ${t}`, ms: 2400 },
+                'local-only': { icon: '✓', color: '#d9922b', title: '이 기기에 저장했어요', sub: `${label}<br>로그인하면 클라우드에도 저장돼요`, ms: 3200 },
+                error: { icon: '!', color: '#e5484d', title: '클라우드 저장에 실패했어요', sub: `${label}<br>이 기기에는 안전하게 저장됐고, 연결되면 자동으로 다시 올려요`, ms: 5000 },
+                empty: { icon: '–', color: '#8a8f98', title: '저장할 내용이 없어요', sub: '내용을 쓴 뒤에 저장해 주세요', ms: 2200 }
+            }[result];
+            if (!M) return;
+            let el = document.getElementById('diary-save-pop');
+            if (!el) {
+                el = document.createElement('div');
+                el.id = 'diary-save-pop';
+                el.setAttribute('role', 'status'); el.setAttribute('aria-live', 'polite');
+                el.style.cssText = 'position:fixed;left:50%;top:22px;z-index:99999;transform:translate(-50%,-14px);opacity:0;transition:opacity .2s,transform .2s;'
+                    + 'display:flex;align-items:center;gap:14px;min-width:260px;max-width:min(92vw,420px);padding:16px 22px;border-radius:18px;cursor:pointer;'
+                    + 'background:var(--surface,#fff);color:var(--txt,#222);border:1px solid var(--border,#ddd);box-shadow:0 14px 40px rgba(0,0,0,.22);font-family:inherit';
+                el.onclick = () => { el.style.opacity = '0'; el.style.pointerEvents = 'none'; };
+                document.body.appendChild(el);
+            }
+            el.innerHTML = `<div style="flex:none;width:38px;height:38px;border-radius:50%;background:${M.color};color:#fff;font-size:22px;font-weight:900;display:flex;align-items:center;justify-content:center">${M.icon}</div>`
+                + `<div style="min-width:0"><div style="font-size:15px;font-weight:800">${M.title}</div><div style="font-size:12px;color:var(--txt3,#777);line-height:1.6;margin-top:2px;word-break:keep-all">${M.sub}</div></div>`;
+            el.style.pointerEvents = 'auto';
+            requestAnimationFrame(() => { el.style.opacity = '1'; el.style.transform = 'translate(-50%,0)'; });
+            clearTimeout(diaryPopTimer);
+            diaryPopTimer = setTimeout(() => { el.style.opacity = '0'; el.style.transform = 'translate(-50%,-14px)'; el.style.pointerEvents = 'none'; }, M.ms);
         }
 
         function diaryEdited() {
@@ -6411,7 +6456,7 @@ button,[role=button],input,select,textarea { touch-action:manipulation; }
 
         // Ctrl/Cmd+S 로 바로 저장
         function diaryKey(ev) {
-            if ((ev.ctrlKey || ev.metaKey) && ev.key === 's') { ev.preventDefault(); saveDiaryNow(); }
+            if ((ev.ctrlKey || ev.metaKey) && ev.key === 's') { ev.preventDefault(); saveDiaryManual(); }
         }
 
         function renderDiaryView(force) {
@@ -6475,13 +6520,13 @@ button,[role=button],input,select,textarea { touch-action:manipulation; }
         <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
           ${DIARY_MOODS.map(m => `<button type="button" class="dy-mood ${e.mood === m.k ? 'on' : ''}" data-mood="${m.k}" onclick="pickDiaryMood('${m.k}')">${m.e}<span>${m.l}</span></button>`).join('')}
         </div>
-        <input id="diary-title" class="dy-title" placeholder="제목 (선택)" value="${diaryEsc(e.title)}" oninput="diaryEdited()" onblur="saveDiaryNow()" onkeydown="if((event.ctrlKey||event.metaKey)&&event.key==='s'){event.preventDefault();saveDiaryNow();}">
+        <input id="diary-title" class="dy-title" placeholder="제목 (선택)" value="${diaryEsc(e.title)}" oninput="diaryEdited()" onblur="saveDiaryNow()" onkeydown="diaryKey(event)">
         <div class="dy-section" style="margin-top:14px">📝 오늘의 기록</div>
         <textarea id="diary-content" class="dy-text" placeholder="오늘 하루는 어땠나요?" oninput="diaryEdited()" onblur="saveDiaryNow()" onkeydown="diaryKey(event)">${diaryEsc(e.content)}</textarea>
         ${DIARY_FIELDS.map(f => `<div class="dy-field"><label for="diary-f-${f.k}">${f.e} ${f.l}</label><textarea id="diary-f-${f.k}" class="dy-sub" placeholder="${f.ph}" oninput="diaryEdited()" onblur="saveDiaryNow()" onkeydown="diaryKey(event)">${diaryEsc(e[f.k])}</textarea></div>`).join('')}
         <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
           <button class="btn btn-ghost" style="color:var(--danger)" onclick="deleteDiary(diaryDate)">삭제</button>
-          <button class="btn btn-warn" onclick="saveDiaryNow()">저장</button>
+          <button class="btn btn-warn" onclick="saveDiaryManual()">저장</button>
         </div>
       </div>
       <div style="display:flex;flex-direction:column;gap:20px;min-width:0">
