@@ -4516,8 +4516,8 @@ button,[role=button],input,select,textarea { touch-action:manipulation; }
                     <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
                 </svg> 시스템 설정</div>
             <div class="sidebar-version" style="margin-top: 8px; padding: 6px 8px 0; border-top: 1px dashed var(--border2); display: flex; justify-content: space-between; font-size: 9px; color: var(--txt3); font-weight: 700; opacity: 0.8;">
-                <span>v1.6.20</span>
-                <span>2026-10-21</span>
+                <span>v1.6.21</span>
+                <span>2026-11-17</span>
             </div>
         </div>
     </aside>
@@ -9737,19 +9737,66 @@ button,[role=button],input,select,textarea { touch-action:manipulation; }
             }
         }
 
+        // ===================== 좋은글 검색 =====================
+        // quoteSearch: 좋은글 화면 전용 검색어 (상단 공통 검색창 searchQuery 와 함께 적용됨)
+        let quoteSearch = '';
+        let _quoteSearchTimer = null;
+
+        // HTML 특수문자 이스케이프 — 글 내용을 그대로 innerHTML 에 넣으면 '<' 등이 태그로 해석되므로 안전하게 바꿔 줌
+        function quoteEsc(s) {
+            return String(s == null ? '' : s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+        }
+
+        // 검색어를 띄어쓰기 기준으로 나눔 → 모든 단어가 들어 있는 글만 찾음 (AND 검색)
+        function quoteSearchTokens() {
+            return `${searchQuery || ''} ${quoteSearch || ''}`.toLowerCase().split(/\s+/).filter(Boolean);
+        }
+
+        // 내용 + 작가 + 카테고리를 한꺼번에 검사
+        function quoteMatches(q, tokens) {
+            if (!tokens.length) return true;
+            const hay = [q.content, q.author, q.category].filter(Boolean).join('\n').toLowerCase();
+            return tokens.every(t => hay.includes(t));
+        }
+
+        // 검색어와 일치하는 부분을 <mark> 로 감싸 형광펜 표시 (나머지 부분은 이스케이프)
+        function quoteHighlight(text, tokens) {
+            const raw = String(text == null ? '' : text);
+            if (!tokens.length) return quoteEsc(raw);
+            const pattern = tokens.slice().sort((a, b) => b.length - a.length)        // 긴 단어부터 매칭
+                .map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');        // 정규식 특수문자 무력화
+            // split 에 괄호(캡처 그룹)를 쓰면 일치한 조각이 홀수 번째 칸에 들어감
+            return raw.split(new RegExp(`(${pattern})`, 'gi'))
+                .map((part, i) => i % 2 ? `<mark class="quote-hl">${quoteEsc(part)}</mark>` : quoteEsc(part)).join('');
+        }
+
+        // 입력할 때마다 결과 영역만 다시 그림 (입력창은 그대로 두므로 한글 조합이 끊기지 않음)
+        function onQuoteSearchInput(v) {
+            quoteSearch = v;
+            const clr = document.getElementById('quote-search-clear');
+            if (clr) clr.style.display = v ? 'flex' : 'none';
+            clearTimeout(_quoteSearchTimer);
+            _quoteSearchTimer = setTimeout(renderQuoteResults, 120);   // 0.12초 디바운스: 빠르게 칠 때 매 글자마다 다시 그리지 않음
+        }
+
+        function clearQuoteSearch() {
+            quoteSearch = '';
+            const inp = document.getElementById('quote-search-input');
+            if (inp) { inp.value = ''; inp.focus(); }
+            const clr = document.getElementById('quote-search-clear');
+            if (clr) clr.style.display = 'none';
+            renderQuoteResults();
+        }
+
+        // 화면 뼈대(제목·버튼·검색창) — 카테고리 이동, 추가/삭제 등 전체 render() 때 그려짐
         function renderQuotesView() {
             const area = document.getElementById('v-quotes');
-            const fQuotes = quotes.filter(q => {
-                const search = searchQuery.toLowerCase();
-                return q.content.toLowerCase().includes(search) || (q.author || '').toLowerCase().includes(search);
-            });
-            const filteredQuotes = sortByNewest(quoteCategoryFilter === 'ALL' ? fQuotes : fQuotes.filter(q => q.category === quoteCategoryFilter));
 
             area.innerHTML = `
     <div class="sticky-add-header">
       <div>
         <h4 style="font-family:'Outfit';font-size:18px;font-weight:900;margin-bottom:4px">✨ 좋은글 모음</h4>
-        <div style="font-size:11px;color:var(--txt3)">${filteredQuotes.length}개의 좋은글이 있습니다</div>
+        <div style="font-size:11px;color:var(--txt3)" id="quote-count"></div>
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">
         <input type="file" id="quote-import-input" accept=".json" style="display:none" onchange="importQuotes(event)">
@@ -9758,6 +9805,47 @@ button,[role=button],input,select,textarea { touch-action:manipulation; }
         <button class="btn btn-warn" onclick="openQuoteModal()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="19" y2="12"/><line x1="19" y1="12" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> 좋은글 추가</button>
       </div>
     </div>
+    <div class="quote-search">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input id="quote-search-input" type="text" autocomplete="off" enterkeyhint="search"
+        placeholder="내용·작가·카테고리 검색 (띄어쓰기로 여러 단어)"
+        value="${quoteEsc(quoteSearch)}"
+        oninput="onQuoteSearchInput(this.value)"
+        onkeydown="if(event.key==='Escape'){event.stopPropagation();clearQuoteSearch();}">
+      <button id="quote-search-clear" type="button" title="검색어 지우기" onclick="clearQuoteSearch()" style="display:${quoteSearch ? 'flex' : 'none'}">✕</button>
+    </div>
+    <div id="quote-results"></div>
+    <style>
+      .memo-cat-item:hover .mcc-edit-btn, .memo-cat-item:hover .mcc-del-btn { opacity: 1 !important; }
+      .quote-search { position:relative; display:flex; align-items:center; margin:0 0 16px; }
+      .quote-search > svg { position:absolute; left:14px; color:var(--txt3); pointer-events:none; }
+      .quote-search input { width:100%; padding:11px 40px 11px 40px; border-radius:14px; border:1.5px solid var(--border2); background:var(--surface); color:var(--txt); font-size:14px; outline:none; transition:border-color .15s, box-shadow .15s; }
+      .quote-search input:focus { border-color:var(--p); box-shadow:0 0 0 3px color-mix(in srgb, var(--p) 18%, transparent); }
+      .quote-search button { position:absolute; right:8px; width:26px; height:26px; border:none; border-radius:50%; background:var(--surface2); color:var(--txt2); cursor:pointer; align-items:center; justify-content:center; font-size:12px; }
+      .quote-hl { background:color-mix(in srgb, #facc15 55%, transparent); color:inherit; border-radius:3px; padding:0 1px; }
+      @media (max-width: 768px) { .quote-search input { font-size:16px; } } /* iOS 는 16px 미만 입력창을 누르면 화면을 확대함 */
+    </style>`;
+            renderQuoteResults();
+        }
+
+        // 검색·카테고리 필터를 적용한 결과(카드 목록 + 카테고리 개수)만 그림
+        function renderQuoteResults() {
+            const box = document.getElementById('quote-results');
+            if (!box) return;   // 다른 화면에 있으면 아무것도 안 함
+            const tokens = quoteSearchTokens();
+            const fQuotes = quotes.filter(q => quoteMatches(q, tokens));
+            const filteredQuotes = sortByNewest(quoteCategoryFilter === 'ALL' ? fQuotes : fQuotes.filter(q => q.category === quoteCategoryFilter));
+
+            const countEl = document.getElementById('quote-count');
+            if (countEl) countEl.textContent = tokens.length
+                ? `검색 결과 ${filteredQuotes.length}개 · 전체 ${quotes.length}개`
+                : `${filteredQuotes.length}개의 좋은글이 있습니다`;
+
+            const emptyHtml = tokens.length
+                ? `<div class="empty" style="grid-column:1/-1">'${quoteEsc(tokens.join(' '))}'에 맞는 좋은글이 없어요.${quoteSearch ? ' <button class="btn btn-ghost" style="margin-left:6px" onclick="clearQuoteSearch()">검색 지우기</button>' : ''}</div>`
+                : '<div class="empty" style="grid-column:span 4">등록된 좋은글이 없습니다.</div>';
+
+            box.innerHTML = `
     <div class="memo-layout">
       <div class="memo-main">
         <div class="memo-cat-filter">
@@ -9778,14 +9866,14 @@ button,[role=button],input,select,textarea { touch-action:manipulation; }
                 <button onclick="event.stopPropagation();deleteQuote('${q.id}')" title="삭제" style="color:var(--danger)"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>
               </div>
               <div style="font-size: 15px; font-weight: 700; line-height: 1.6; color: var(--txt); white-space: pre-wrap; word-break: keep-all; flex: 1; display: flex; align-items: center; justify-content: center; text-align: center; margin-bottom: 16px; font-style: italic; letter-spacing: -0.2px;">
-                "${q.content}"
+                <span>"${quoteHighlight(q.content, tokens)}"</span>
               </div>
               <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; border-top: 1px solid var(--border2); padding-top: 10px;">
-                <span style="font-size: 11px; color: var(--txt2); font-weight: 600;">- ${q.author || '작자 미상'}</span>
-                ${q.category ? `<span class="mc-cat-tag" style="background:${accentColor}22; color:${accentColor}; margin: 0; font-size: 9px; font-weight: 800; border: 1px solid ${accentColor}44;">${q.category}</span>` : ''}
+                <span style="font-size: 11px; color: var(--txt2); font-weight: 600;">- ${q.author ? quoteHighlight(q.author, tokens) : '작자 미상'}</span>
+                ${q.category ? `<span class="mc-cat-tag" style="background:${accentColor}22; color:${accentColor}; margin: 0; font-size: 9px; font-weight: 800; border: 1px solid ${accentColor}44;">${quoteHighlight(q.category, tokens)}</span>` : ''}
               </div>
             </div>`;
-            }).join('') || '<div class="empty" style="grid-column:span 4">등록된 좋은글이 없습니다.</div>'}
+            }).join('') || emptyHtml}
         </div>
       </div>
       <div class="memo-sidebar animate animate-d1">
@@ -9813,8 +9901,7 @@ button,[role=button],input,select,textarea { touch-action:manipulation; }
           </div>`;
             }).join('')}
       </div>
-    </div>
-    <style>.memo-cat-item:hover .mcc-edit-btn, .memo-cat-item:hover .mcc-del-btn { opacity: 1 !important; }</style>`;
+    </div>`;
         }
 
         function setQuoteFilter(cat) {
