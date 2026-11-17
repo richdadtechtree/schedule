@@ -4225,6 +4225,19 @@ button,[role=button],input,select,textarea { touch-action:manipulation; }
   *,*::before,*::after { animation:none!important; transition:none!important; scroll-behavior:auto!important; }
 }
 </style>
+<style>
+/* 휴대폰 입력 시 화면 확대 방지
+   iOS Safari 는 글자 크기가 16px 미만인 입력칸을 누르면 화면을 자동 확대함.
+   손가락으로 조작하는 기기(pointer:coarse)에서만 입력칸 글자를 16px 로 맞춤.
+   인라인 style 로 font-size 를 지정한 입력칸이 많아서 !important 로 덮어씀.
+   (viewport 에 maximum-scale=1 을 넣는 방법도 있지만, 안드로이드에서 두 손가락 확대까지 막혀 쓰지 않음) */
+@media (hover: none) and (pointer: coarse) {
+  input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):not([type=file]),
+  textarea, select, [contenteditable="true"], [contenteditable=""] {
+    font-size: 16px !important;
+  }
+}
+</style>
     <script>
         // Independent appearance preference: never changes task/memo data.
         function setWorkspaceDesign(design) {
